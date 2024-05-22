@@ -422,6 +422,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptionRootSignature.pParameters = rootParameters;
 	descriptionRootSignature.NumParameters = _countof(rootParameters);
 
+	D3D12_ROOT_PARAMETER rootParameters[1] = {};
+	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParameters[0].Descriptor.ShaderRegister = 0;
+	descriptionRootSignature.pParameters = rootParameters;
+	descriptionRootSignature.NumParameters = _countof(rootParameters);
+
 	ID3DBlob* sigunatureBlob = nullptr;
 	ID3DBlob* errorBlob = nullptr;
 	hr = D3D12SerializeRootSignature(&descriptionRootSignature, D3D_ROOT_SIGNATURE_VERSION_1, &sigunatureBlob, &errorBlob);
