@@ -137,6 +137,34 @@ IDxcBlob* CompileShader(
 	
 }
 
+ID3D12Resource* CreateBufferResource(ID3D12Device* device, size_t sizeInBytes) {
+
+
+	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
+	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+	D3D12_RESOURCE_DESC vertexResoureDesc{};
+
+	vertexResoureDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	vertexResoureDesc.Width = sizeInBytes;
+
+	vertexResoureDesc.Height = 1;
+	vertexResoureDesc.DepthOrArraySize = 1;
+	vertexResoureDesc.MipLevels = 1;
+	vertexResoureDesc.SampleDesc.Count = 1;
+
+	vertexResoureDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	ID3D12Resource* resource = nullptr;
+	HRESULT hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
+		&vertexResoureDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(&resource));
+	assert(SUCCEEDED(hr));
+	return resource;
+}
+
+
+
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -325,6 +353,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 #pragma endregion
 
+
+	
+
+
 	ID3D12Resource* swapChainResources[2] = { nullptr };
 	hr = swapChain->GetBuffer(0, IID_PPV_ARGS(&swapChainResources[0]));
 	assert(SUCCEEDED(hr));
@@ -380,6 +412,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[1].Descriptor.ShaderRegister = 0;
+	descriptionRootSignature.pParameters = rootParameters;
+	descriptionRootSignature.NumParameters = _countof(rootParameters);
+
+	D3D12_ROOT_PARAMETER rootParameters[1] = {};
+	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParameters[0].Descriptor.ShaderRegister = 0;
 	descriptionRootSignature.pParameters = rootParameters;
 	descriptionRootSignature.NumParameters = _countof(rootParameters);
 
@@ -448,31 +487,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		IID_PPV_ARGS(&graphicsPipelinestate));
 	assert(SUCCEEDED(hr));
 
-	
-	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
-	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-	D3D12_RESOURCE_DESC vertexResoureDesc{};
-
-	vertexResoureDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	vertexResoureDesc.Width = sizeof(Vector4) * 3;
-
-	vertexResoureDesc.Height = 1;
-	vertexResoureDesc.DepthOrArraySize = 1;
-	vertexResoureDesc.MipLevels = 1;
-	vertexResoureDesc.SampleDesc.Count = 1;
-
-	vertexResoureDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	ID3D12Resource* vertexResuoce = nullptr;
-	hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
-		&vertexResoureDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&vertexResuoce));
-	assert(SUCCEEDED(hr));
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(Vector4) * 3);
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferview{};
 
-	vertexBufferview.BufferLocation = vertexResuoce->GetGPUVirtualAddress();
+	vertexBufferview.BufferLocation = vertexResource->GetGPUVirtualAddress();
 
 	vertexBufferview.SizeInBytes = sizeof(Vector4) * 3;
 
@@ -480,7 +499,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	Vector4* vertexDate = nullptr;
 
-	vertexResuoce->Map(0, nullptr, reinterpret_cast<void**>(&vertexDate));
+	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexDate));
 
 	vertexDate[0] = { -0.5f,-0.5,0.0f,1.0f };
 
@@ -503,8 +522,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	scissorRect.top = 0;
 	scissorRect.bottom = kClientHeight;
 
-	
+	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Vector4));
 
+	Vector4* materialDate = nullptr;
+	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
+
+	*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
 
 	while (msg.message != WM_QUIT) {
 		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
@@ -540,6 +563,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferview);
 
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
 
 			commandList->DrawInstanced(3, 1, 0, 0);
 
@@ -590,7 +615,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	dxgifactory->Release();
 
 
-	vertexResuoce->Release();
+	vertexResource->Release();
 	graphicsPipelinestate->Release();
 	sigunatureBlob->Release();
 	if (errorBlob) {
@@ -600,6 +625,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
 
+	materialResource->Release();
 
 
 
