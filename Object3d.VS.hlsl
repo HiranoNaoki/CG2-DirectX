@@ -1,8 +1,9 @@
 struct TransformationMatrix{
 float32_t4x4 WVP;
-}
+};
 
-ConstanBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
+
+ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
 struct VertexShaderOutput{
 float32_t4 position : SV_POSITION;
 

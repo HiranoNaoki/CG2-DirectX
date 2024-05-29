@@ -9,6 +9,7 @@
 #include <dxcapi.h>
 
 
+
 #pragma comment(lib,"dxguid.lib")
 #pragma comment(lib,"dxcompiler.lib")
 
@@ -28,6 +29,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 }
 
+struct Vector3 final 
+{
+	float x;
+	float y;
+	float z;
+};
+
 struct Vector4 final
 {
 	float x;
@@ -35,6 +43,262 @@ struct Vector4 final
 	float z;
 	float w;
 };
+
+struct Matrix4x4 final {
+	float m[4][4];
+};
+
+Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
+{
+	Matrix4x4 ans;
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			ans.m[i][j] = m1.m[i][0] * m2.m[0][j] + m1.m[i][1] * m2.m[1][j] + m1.m[i][2] * m2.m[2][j] + m1.m[i][3] * m2.m[3][j];
+		}
+	}
+	return ans;
+}
+Matrix4x4 MakeRotateXMatrix(float radian) {
+	Matrix4x4 ans;
+	ans.m[0][0] = 1;
+	ans.m[0][1] = 0;
+	ans.m[0][2] = 0;
+	ans.m[0][3] = 0;
+	ans.m[1][0] = 0;
+	ans.m[1][1] = std::cos(radian);
+	ans.m[1][2] = std::sin(radian);
+	ans.m[1][3] = 0;
+	ans.m[2][0] = 0;
+	ans.m[2][1] = -std::sin(radian);
+	ans.m[2][2] = std::cos(radian);
+	ans.m[2][3] = 0;
+	ans.m[3][0] = 0;
+	ans.m[3][1] = 0;
+	ans.m[3][2] = 0;
+	ans.m[3][3] = 1;
+	return ans;
+}
+Matrix4x4 MakeRotateYMatrix(float radian) {
+	Matrix4x4 ans;
+	ans.m[0][0] = std::cos(radian);
+	ans.m[0][1] = 0;
+	ans.m[0][2] = -std::sin(radian);
+	ans.m[0][3] = 0;
+	ans.m[1][0] = 0;
+	ans.m[1][1] = 1;
+	ans.m[1][2] = 0;
+	ans.m[1][3] = 0;
+	ans.m[2][0] = std::sin(radian);
+	ans.m[2][1] = 0;
+	ans.m[2][2] = std::cos(radian);
+	ans.m[2][3] = 0;
+	ans.m[3][0] = 0;
+	ans.m[3][1] = 0;
+	ans.m[3][2] = 0;
+	ans.m[3][3] = 1;
+	return ans;
+}Matrix4x4 MakeRotateZMatrix(float radian) {
+	Matrix4x4 ans;
+	ans.m[0][0] = std::cos(radian);
+	ans.m[0][1] = std::sin(radian);
+	ans.m[0][2] = 0;
+	ans.m[0][3] = 0;
+	ans.m[1][0] = -std::sin(radian);
+	ans.m[1][1] = std::cos(radian);
+	ans.m[1][2] = 0;
+	ans.m[1][3] = 0;
+	ans.m[2][0] = 0;
+	ans.m[2][1] = 0;
+	ans.m[2][2] = 1;
+	ans.m[2][3] = 0;
+	ans.m[3][0] = 0;
+	ans.m[3][1] = 0;
+	ans.m[3][2] = 0;
+	ans.m[3][3] = 1;
+	return ans;
+}
+
+Matrix4x4 MakeTranslateMatrix(const Vector3& translate) {
+	Matrix4x4 ans;
+	ans.m[0][0] = 1; ans.m[0][1] = 0; ans.m[0][2] = 0; ans.m[0][3] = 0;
+	ans.m[1][0] = 0; ans.m[1][1] = 1; ans.m[1][2] = 0; ans.m[1][3] = 0;
+	ans.m[2][0] = 0; ans.m[2][1] = 0; ans.m[2][2] = 1; ans.m[2][3] = 0;
+	ans.m[3][0] = translate.x; ans.m[3][1] = translate.y; ans.m[3][2] = translate.z;
+	ans.m[3][3] = 1;
+	return ans;
+}
+Matrix4x4 MakeScaleMatrix(const Vector3& scale) {
+	Matrix4x4 ans;
+	ans.m[0][0] = scale.x; ans.m[0][1] = 0; ans.m[0][2] = 0; ans.m[0][3] = 0;
+	ans.m[1][0] = 0; ans.m[1][1] = scale.y; ans.m[1][2] = 0; ans.m[1][3] = 0;
+	ans.m[2][0] = 0; ans.m[2][1] = 0; ans.m[2][2] = scale.z; ans.m[2][3] = 0;
+	ans.m[3][0] = 0; ans.m[3][1] = 0; ans.m[3][2] = 0; ans.m[3][3] = 1;
+	return ans;
+}
+
+Matrix4x4 MakeIdentity4x4() {
+	Matrix4x4 ans;
+	ans.m[0][0] = 1; ans.m[0][1] = 0; ans.m[0][2] = 0; ans.m[0][3] = 0;
+	ans.m[1][0] = 0; ans.m[1][1] = 1; ans.m[1][2] = 0; ans.m[1][3] = 0;
+	ans.m[2][0] = 0; ans.m[2][1] = 0; ans.m[2][2] = 1; ans.m[2][3] = 0;
+	ans.m[3][0] = 0; ans.m[3][1] = 0; ans.m[3][2] = 0; ans.m[3][3] = 1;
+	return ans;
+
+}
+
+Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate) {
+	Matrix4x4 ans;
+	ans = Multiply(Multiply(MakeScaleMatrix(scale), Multiply(Multiply(MakeRotateXMatrix(rotate.x), MakeRotateYMatrix(rotate.y)), MakeRotateZMatrix(rotate.z))), MakeTranslateMatrix(translate));
+	return ans;
+}
+
+
+
+Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip) {
+	Matrix4x4 ans;
+
+	float cot = 1 / std::tan(fovY / 2);
+	ans.m[0][0] = (1 / aspectRatio) * cot;
+	ans.m[0][1] = 0;
+	ans.m[0][2] = 0;
+	ans.m[0][3] = 0;
+	ans.m[1][0] = 0;
+	ans.m[1][1] = cot;
+	ans.m[1][2] = 0;
+	ans.m[1][3] = 0;
+	ans.m[2][0] = 0;
+	ans.m[2][1] = 0;
+	ans.m[2][2] = nearClip - farClip / nearClip;
+	ans.m[2][3] = 1;
+	ans.m[3][0] = 0;
+	ans.m[3][1] = 0;
+	ans.m[3][2] = (nearClip - farClip) / -farClip * nearClip;
+	ans.m[3][3] = 0;
+
+	return ans;
+}
+
+Matrix4x4 Inverse(const Matrix4x4& m) {
+	float determinant =
+		+m.m[0][0] * m.m[1][1] * m.m[2][2] * m.m[3][3]
+		+ m.m[0][0] * m.m[1][2] * m.m[2][3] * m.m[3][1]
+		+ m.m[0][0] * m.m[1][3] * m.m[2][1] * m.m[3][2]
+
+		- m.m[0][0] * m.m[1][3] * m.m[2][2] * m.m[3][1]
+		- m.m[0][0] * m.m[1][2] * m.m[2][1] * m.m[3][3]
+		- m.m[0][0] * m.m[1][1] * m.m[2][3] * m.m[3][2]
+
+		- m.m[0][1] * m.m[1][0] * m.m[2][2] * m.m[3][3]
+		- m.m[0][2] * m.m[1][0] * m.m[2][3] * m.m[3][1]
+		- m.m[0][3] * m.m[1][0] * m.m[2][1] * m.m[3][2]
+
+		+ m.m[0][3] * m.m[1][0] * m.m[2][2] * m.m[3][1]
+		+ m.m[0][2] * m.m[1][0] * m.m[2][1] * m.m[3][3]
+		+ m.m[0][1] * m.m[1][0] * m.m[2][3] * m.m[3][2]
+
+		+ m.m[0][1] * m.m[1][2] * m.m[2][0] * m.m[3][3]
+		+ m.m[0][2] * m.m[1][3] * m.m[2][0] * m.m[3][1]
+		+ m.m[0][3] * m.m[1][1] * m.m[2][0] * m.m[3][2]
+
+		- m.m[0][3] * m.m[1][2] * m.m[2][0] * m.m[3][1]
+		- m.m[0][2] * m.m[1][1] * m.m[2][0] * m.m[3][3]
+		- m.m[0][1] * m.m[1][3] * m.m[2][0] * m.m[3][2]
+
+		- m.m[0][1] * m.m[1][2] * m.m[2][3] * m.m[3][0]
+		- m.m[0][2] * m.m[1][3] * m.m[2][1] * m.m[3][0]
+		- m.m[0][3] * m.m[1][1] * m.m[2][2] * m.m[3][0]
+
+		+ m.m[0][3] * m.m[1][2] * m.m[2][1] * m.m[3][0]
+		+ m.m[0][2] * m.m[1][1] * m.m[2][3] * m.m[3][0]
+		+ m.m[0][1] * m.m[1][3] * m.m[2][2] * m.m[3][0];
+
+	Matrix4x4 result = {};
+	float recpDeterminant = 1.0f / determinant;
+	result.m[0][0] = (m.m[1][1] * m.m[2][2] * m.m[3][3] + m.m[1][2] * m.m[2][3] * m.m[3][1] +
+		m.m[1][3] * m.m[2][1] * m.m[3][2] - m.m[1][3] * m.m[2][2] * m.m[3][1] -
+		m.m[1][2] * m.m[2][1] * m.m[3][3] - m.m[1][1] * m.m[2][3] * m.m[3][2]) * recpDeterminant;
+	result.m[0][1] = (-m.m[0][1] * m.m[2][2] * m.m[3][3] - m.m[0][2] * m.m[2][3] * m.m[3][1] -
+		m.m[0][3] * m.m[2][1] * m.m[3][2] + m.m[0][3] * m.m[2][2] * m.m[3][1] +
+		m.m[0][2] * m.m[2][1] * m.m[3][3] + m.m[0][1] * m.m[2][3] * m.m[3][2]) * recpDeterminant;
+	result.m[0][2] = (m.m[0][1] * m.m[1][2] * m.m[3][3] + m.m[0][2] * m.m[1][3] * m.m[3][1] +
+		m.m[0][3] * m.m[1][1] * m.m[3][2] - m.m[0][3] * m.m[1][2] * m.m[3][1] -
+		m.m[0][2] * m.m[1][1] * m.m[3][3] - m.m[0][1] * m.m[1][3] * m.m[3][2]) * recpDeterminant;
+	result.m[0][3] = (-m.m[0][1] * m.m[1][2] * m.m[2][3] - m.m[0][2] * m.m[1][3] * m.m[2][1] -
+		m.m[0][3] * m.m[1][1] * m.m[2][2] + m.m[0][3] * m.m[1][2] * m.m[2][1] +
+		m.m[0][2] * m.m[1][1] * m.m[2][3] + m.m[0][1] * m.m[1][3] * m.m[2][2]) * recpDeterminant;
+
+	result.m[1][0] = (-m.m[1][0] * m.m[2][2] * m.m[3][3] - m.m[1][2] * m.m[2][3] * m.m[3][0] -
+		m.m[1][3] * m.m[2][0] * m.m[3][2] + m.m[1][3] * m.m[2][2] * m.m[3][0] +
+		m.m[1][2] * m.m[2][0] * m.m[3][3] + m.m[1][0] * m.m[2][3] * m.m[3][2]) * recpDeterminant;
+	result.m[1][1] = (m.m[0][0] * m.m[2][2] * m.m[3][3] + m.m[0][2] * m.m[2][3] * m.m[3][0] +
+		m.m[0][3] * m.m[2][0] * m.m[3][2] - m.m[0][3] * m.m[2][2] * m.m[3][0] -
+		m.m[0][2] * m.m[2][0] * m.m[3][3] - m.m[0][0] * m.m[2][3] * m.m[3][2]) * recpDeterminant;
+	result.m[1][2] = (-m.m[0][0] * m.m[1][2] * m.m[3][3] - m.m[0][2] * m.m[1][3] * m.m[3][0] -
+		m.m[0][3] * m.m[1][0] * m.m[3][2] + m.m[0][3] * m.m[1][2] * m.m[3][0] +
+		m.m[0][2] * m.m[1][0] * m.m[3][3] + m.m[0][0] * m.m[1][3] * m.m[3][2]) * recpDeterminant;
+	result.m[1][3] = (m.m[0][0] * m.m[1][2] * m.m[2][3] + m.m[0][2] * m.m[1][3] * m.m[2][0] +
+		m.m[0][3] * m.m[1][0] * m.m[2][2] - m.m[0][3] * m.m[1][2] * m.m[2][0] -
+		m.m[0][2] * m.m[1][0] * m.m[2][3] - m.m[0][0] * m.m[1][3] * m.m[2][2]) * recpDeterminant;
+
+	result.m[2][0] = (m.m[1][0] * m.m[2][1] * m.m[3][3] + m.m[1][1] * m.m[2][3] * m.m[3][0] +
+		m.m[1][3] * m.m[2][0] * m.m[3][1] - m.m[1][3] * m.m[2][1] * m.m[3][0] -
+		m.m[1][1] * m.m[2][0] * m.m[3][3] - m.m[1][0] * m.m[2][3] * m.m[3][1]) * recpDeterminant;
+	result.m[2][1] = (-m.m[0][0] * m.m[2][1] * m.m[3][3] - m.m[0][1] * m.m[2][3] * m.m[3][0] -
+		m.m[0][3] * m.m[2][0] * m.m[3][1] + m.m[0][3] * m.m[2][1] * m.m[3][0] +
+		m.m[0][1] * m.m[2][0] * m.m[3][3] + m.m[0][0] * m.m[2][3] * m.m[3][1]) * recpDeterminant;
+	result.m[2][2] = (m.m[0][0] * m.m[1][1] * m.m[3][3] + m.m[0][1] * m.m[1][3] * m.m[3][0] +
+		m.m[0][3] * m.m[1][0] * m.m[3][1] - m.m[0][3] * m.m[1][1] * m.m[3][0] -
+		m.m[0][1] * m.m[1][0] * m.m[3][3] - m.m[0][0] * m.m[1][3] * m.m[3][1]) * recpDeterminant;
+	result.m[2][3] = (-m.m[0][0] * m.m[1][1] * m.m[2][3] - m.m[0][1] * m.m[1][3] * m.m[2][0] -
+		m.m[0][3] * m.m[1][0] * m.m[2][1] + m.m[0][3] * m.m[1][1] * m.m[2][0] +
+		m.m[0][1] * m.m[1][0] * m.m[2][3] + m.m[0][0] * m.m[1][3] * m.m[2][1]) * recpDeterminant;
+
+	result.m[3][0] = (-m.m[1][0] * m.m[2][1] * m.m[3][2] - m.m[1][1] * m.m[2][2] * m.m[3][0] -
+		m.m[1][2] * m.m[2][0] * m.m[3][1] + m.m[1][2] * m.m[2][1] * m.m[3][0] +
+		m.m[1][1] * m.m[2][0] * m.m[3][2] + m.m[1][0] * m.m[2][2] * m.m[3][1]) * recpDeterminant;
+	result.m[3][1] = (m.m[0][0] * m.m[2][1] * m.m[3][2] + m.m[0][1] * m.m[2][2] * m.m[3][0] +
+		m.m[0][2] * m.m[2][0] * m.m[3][1] - m.m[0][2] * m.m[2][1] * m.m[3][0] -
+		m.m[0][1] * m.m[2][0] * m.m[3][2] - m.m[0][0] * m.m[2][2] * m.m[3][1]) * recpDeterminant;
+	result.m[3][2] = (-m.m[0][0] * m.m[1][1] * m.m[3][2] - m.m[0][1] * m.m[1][2] * m.m[3][0] -
+		m.m[0][2] * m.m[1][0] * m.m[3][1] + m.m[0][2] * m.m[1][1] * m.m[3][0] +
+		m.m[0][1] * m.m[1][0] * m.m[3][2] + m.m[0][0] * m.m[1][2] * m.m[3][1]) * recpDeterminant;
+	result.m[3][3] = (m.m[0][0] * m.m[1][1] * m.m[2][2] + m.m[0][1] * m.m[1][2] * m.m[2][0] +
+		m.m[0][2] * m.m[1][0] * m.m[2][1] - m.m[0][2] * m.m[1][1] * m.m[2][0] -
+		m.m[0][1] * m.m[1][0] * m.m[2][2] - m.m[0][0] * m.m[1][2] * m.m[2][1]) * recpDeterminant;
+
+	return result;
+}
+
+
+struct Transform
+{
+	Vector3 scale;
+	Vector3 rotate;
+	Vector3 translate;
+};
+
+const int32_t kClientWidth = 1280;
+const int32_t kClientHeight = 720;
+
+Transform transform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f } };
+
+Transform cameratransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-10.0f} };
+
+
+Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+
+Matrix4x4 cameraMatrix = MakeAffineMatrix(cameratransform.scale, cameratransform.rotate, cameratransform.translate);
+
+Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+
+Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight),0.1f,100.0f);
+
+Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+
+
+
 
 
 
@@ -179,8 +443,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	RegisterClass(&wc);
 
 	
-	const int32_t kClientWidth = 1280;
-	const int32_t kClientHeight = 720;
+	
 
 	RECT wrc = { 0,0,kClientWidth,kClientHeight };
 
@@ -422,10 +685,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptionRootSignature.pParameters = rootParameters;
 	descriptionRootSignature.NumParameters = _countof(rootParameters);
 
-	D3D12_ROOT_PARAMETER rootParameters[1] = {};
+	D3D12_ROOT_PARAMETER rootParameters[2] = {};
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[0].Descriptor.ShaderRegister = 0;
+	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+	rootParameters[1].Descriptor.ShaderRegister = 0;
 	descriptionRootSignature.pParameters = rootParameters;
 	descriptionRootSignature.NumParameters = _countof(rootParameters);
 
@@ -536,6 +802,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
 
+	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
+
+	Matrix4x4* wvpDate = nullptr;
+
+	wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&wvpDate));
+
+	*wvpDate = MakeIdentity4x4();
+
 	while (msg.message != WM_QUIT) {
 		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 		{
@@ -544,6 +818,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 		else {
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+
+			transform.rotate.y += 0.03f;
+			
+			worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+			
+			worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+
+
+
+			*wvpDate = worldViewProjectionMatrix;
 
 			D3D12_RESOURCE_BARRIER barrier{};
 
@@ -572,6 +856,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
+
+			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+
+
 
 			commandList->DrawInstanced(3, 1, 0, 0);
 
@@ -631,6 +919,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootSignature->Release();
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
+
+
+
+	wvpResource->Release();
 
 	materialResource->Release();
 
