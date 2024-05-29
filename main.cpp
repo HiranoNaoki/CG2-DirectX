@@ -929,12 +929,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-
-
-
-
-
-
 #ifdef _DEBUG
 	debugController->Release();
 #endif
