@@ -834,15 +834,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
-			ImGui::ShowDemoWindow();
+			//ImGui::ShowDemoWindow();
+			ImGui::Begin("anju");
 
+
+			ImGui::ColorEdit3("RGB", &materialDate->x);
+			ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f);
+			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
+			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
+
+			ImGui::End();
 			
 
 
 
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
-			transform.rotate.y += 0.03f;
+			//transform.rotate.y += 0.03f;
 			
 			worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
 			
@@ -943,6 +951,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rtvDescriptorHeap->Release();
 	swapChainResources[0]->Release();
 	swapChainResources[1]->Release();
+	srvDescriptorHeap->Release();
 	swapChain->Release();
 	commandList->Release();
 	commandAllocator->Release();
