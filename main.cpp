@@ -7,6 +7,7 @@
 #include<cassert>
 #include <dxgidebug.h>
 #include <dxcapi.h>
+#include"externals/DirectXTex/DirectXTex.h"
 #include"externals/imgui/imgui.h"
 #include"externals/imgui/imgui_impl_dx12.h"
 #include"externals/imgui/imgui_impl_win32.h"
@@ -446,11 +447,77 @@ ID3D12Resource* CreateBufferResource(ID3D12Device* device, size_t sizeInBytes) {
 	return resource;
 }
 
+DirectX::ScratchImage LoadTexture(const std::string& filePath) {
+	DirectX::ScratchImage image{};
+	std::wstring filePathw = ConvertString(filePath);
+	HRESULT hr = DirectX::LoadFromWICFile(filePathw.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+	assert(SUCCEEDED(hr));
+
+	DirectX::ScratchImage mipImges{};
+	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImges);
+	assert(SUCCEEDED(hr));
+
+	return mipImges;
+
+}
+ID3D12Resource* CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metabete)
+{
+	D3D12_RESOURCE_DESC resourceDesc{};
+	resourceDesc.Width = UINT(metabete.width);
+	resourceDesc.Height = UINT(metabete.height);
+	resourceDesc.MipLevels = UINT16(metabete.mipLevels);
+	resourceDesc.DepthOrArraySize = UINT16(metabete.arraySize);
+	resourceDesc.Format = metabete.format;
+	resourceDesc.SampleDesc.Count = 1;
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metabete.dimension);
+
+	//Heap
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_CUSTOM;
+	heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+	heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+
+	//resource
+	ID3D12Resource* resource = nullptr;
+	HRESULT hr = device->CreateCommittedResource(
+		&heapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&resource));
+	assert(SUCCEEDED(hr));
+
+	return resource;
+
+}
+void UploadTextureDate(ID3D12Resource* texture, const DirectX::ScratchImage& mipImges)
+{
+	const DirectX::TexMetadata& metadate = mipImges.GetMetadata();
+	for (size_t mipLevel = 0; mipLevel < metadate.mipLevels; ++mipLevel)
+	{
+		const DirectX::Image* img = mipImges.GetImage(mipLevel, 0, 0);
+
+		HRESULT hr = texture->WriteToSubresource(
+			UINT(mipLevel),
+			nullptr,
+			img->pixels,
+			UINT(img->rowPitch),
+			UINT(img->slicePitch)
+		);
+		assert(SUCCEEDED(hr));
+	}
 
 
+
+}
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+
+	CoInitializeEx(0, COINIT_MULTITHREADED);
+
+
 
 #pragma region window
 	WNDCLASS wc{};
@@ -994,5 +1061,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		debug->Release();
 	}
 
+
+
+
+	CoUninitialize();
 	return 0;
 }
