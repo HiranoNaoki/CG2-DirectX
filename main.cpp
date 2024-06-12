@@ -529,7 +529,36 @@ ID3D12Resource* UploadTextureDate(ID3D12Resource* texture, const DirectX::Scratc
 
 }
 
+ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height) {
+	D3D12_RESOURCE_DESC resourceDesc{};
+	resourceDesc.Width = width;
+	resourceDesc.Height = height;
+	resourceDesc.MipLevels = 1;
+	resourceDesc.DepthOrArraySize = 1;
+	resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	resourceDesc.SampleDesc.Count = 1;
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+
+	D3D12_CLEAR_VALUE depthClearValue{};
+	depthClearValue.DepthStencil.Depth = 1.0f;
+	depthClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+	ID3D12Resource* resource = nullptr;
+	HRESULT hr = device->CreateCommittedResource(
+		&heapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		&depthClearValue,
+		IID_PPV_ARGS(&resource));
+	assert(SUCCEEDED(hr));
+	return resource;
+}
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -841,7 +870,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
-	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+	rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 	
 	IDxcBlob* vertexShaderBlob = CompileShader(L"Object3d.VS.hlsl",
@@ -851,6 +880,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	IDxcBlob* pixelShaderBlob = CompileShader(L"Object3d.PS.hlsl",
 		L"ps_6_0", dxcutils, dxcCompiler, includeHandler);
 	assert(pixelShaderBlob != nullptr);
+
+
+	D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+
+	depthStencilDesc.DepthEnable = true;
+
+	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+
+	depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+
+
+
+
+
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPilelineStateDesc{};
 	graphicsPilelineStateDesc.pRootSignature = rootSignature;
@@ -871,18 +915,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	graphicsPilelineStateDesc.SampleDesc.Count = 1;
 	graphicsPilelineStateDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
+	graphicsPilelineStateDesc.DepthStencilState = depthStencilDesc;
+	graphicsPilelineStateDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
 	ID3D12PipelineState* graphicsPipelinestate = nullptr;
 	hr = device->CreateGraphicsPipelineState(&graphicsPilelineStateDesc,
 		IID_PPV_ARGS(&graphicsPipelinestate));
 	assert(SUCCEEDED(hr));
 
-	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * 3);
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * 6);
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferview{};
 
 	vertexBufferview.BufferLocation = vertexResource->GetGPUVirtualAddress();
 
-	vertexBufferview.SizeInBytes = sizeof(VertexDate) * 3;
+	vertexBufferview.SizeInBytes = sizeof(VertexDate) * 6;
 
 	vertexBufferview.StrideInBytes = sizeof(VertexDate);
 
@@ -899,13 +946,38 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDate[2].position = { 0.5f,-0.5f,0.0f,1.0f };
 	vertexDate[2].texcoord = { 1.0f,1.0f };
 
+	vertexDate[3].position = { -0.5f,-0.5f,0.5f,1.0f };
+	vertexDate[3].texcoord = { 0.0f,1.0f };
 
+	vertexDate[4].position = { 0.0f,0.0f,0.0f,1.0f };
+	vertexDate[4].texcoord = { 0.5f,0.0f };
+
+	vertexDate[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
+	vertexDate[5].texcoord = { 1.0f,1.0f, };
+
+	
 
 	DirectX::ScratchImage mipImages = LoadTexture("resource/uvChecker.png");
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
 	ID3D12Resource* textureResource = CreateTextureResource(device, metadata);
 	ID3D12Resource* intermeditateResource =
 	UploadTextureDate(textureResource, mipImages,device,commandList);
+
+	ID3D12Resource* depthStencilResource = CreateDepthStencilTextureResource(device, kClientWidth, kClientHeight);
+	ID3D12DescriptorHeap* dsvdescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+
+	device->CreateDepthStencilView(depthStencilResource, &dsvDesc, dsvdescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+
+
+	
+
+
+
 
 
 	//
@@ -1019,13 +1091,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->ResourceBarrier(1, &barrier);
 
 
-
-			commandList->OMSetRenderTargets(1, &rtvHandle[backBufferIndex], false, nullptr);
+			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvdescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+			commandList->OMSetRenderTargets(1, &rtvHandle[backBufferIndex], false, &dsvHandle);
 
 			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f, };
 			commandList->ClearRenderTargetView(rtvHandle[backBufferIndex],clearColor,0,nullptr);
 		
-
+			commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 
 			ID3D12DescriptorHeap* descrptorHeaps[] = { srvDescriptorHeap };
@@ -1051,7 +1123,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			ImGui::Render();
 
-			commandList->DrawInstanced(3, 1, 0, 0);
+			commandList->DrawInstanced(6, 1, 0, 0);
 
 			
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
@@ -1102,7 +1174,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	commandList->Release();
 	commandAllocator->Release();
 	commandQueue->Release();
-	device->Release();
 	useAdapter->Release();
 	dxgifactory->Release();
 
@@ -1118,13 +1189,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexShaderBlob->Release();
 
 	textureResource->Release();
-
+	depthStencilResource->Release();
+	dsvdescriptorHeap->Release();
 
 	wvpResource->Release();
 
 	materialResource->Release();
 	intermeditateResource->Release();
+	
 
+	device->Release();
 
 
 
