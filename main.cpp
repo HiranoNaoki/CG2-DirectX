@@ -294,6 +294,28 @@ Matrix4x4 Inverse(const Matrix4x4& m) {
 }
 
 
+
+Matrix4x4 MakeOrthograhicMatrix(float l, float r, float t, float b, float zn, float zf) {
+	Matrix4x4 ans;
+	ans.m[0][0] = 2 / (r - l);
+	ans.m[0][1] = 0;
+	ans.m[0][2] = 0;
+	ans.m[0][3] = 0;
+	ans.m[1][0] = 0;
+	ans.m[1][1] = 2 / (t - b);
+	ans.m[1][2] = 0;
+	ans.m[1][3] = 0;
+	ans.m[2][0] = 0;
+	ans.m[2][1] = 0;
+	ans.m[2][2] = 1 / (zf - zn);
+	ans.m[2][3] = 0;
+	ans.m[3][0] = (l + r) / (l - r);
+	ans.m[3][1] = (t + b) / (b - t);
+	ans.m[3][2] = zn / (zn - zf);
+	ans.m[3][3] = 1;
+	return ans;
+}
+
 struct Transform
 {
 	Vector3 scale;
@@ -308,6 +330,8 @@ Transform transform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f } };
 
 Transform cameratransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-10.0f} };
 
+Transform transformSprite{ {1.0f,1.0f,1.0f,},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
+
 
 Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
 
@@ -318,6 +342,15 @@ Matrix4x4 viewMatrix = Inverse(cameraMatrix);
 Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight),0.1f,100.0f);
 
 Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+
+
+Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
+Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
+Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidth),0.0f, float(kClientHeight), 0.0f, 100.0f);
+Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+
+
+
 
 
 ID3D12DescriptorHeap* CreateDescriptorHeap(
@@ -559,6 +592,7 @@ ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t 
 	assert(SUCCEEDED(hr));
 	return resource;
 }
+
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -870,7 +904,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
-	rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 	
 	IDxcBlob* vertexShaderBlob = CompileShader(L"Object3d.VS.hlsl",
@@ -973,11 +1007,36 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	device->CreateDepthStencilView(depthStencilResource, &dsvDesc, dsvdescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 
+	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexDate) * 6);
+
+	
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
+	vertexBufferViewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
+	vertexBufferViewSprite.SizeInBytes = sizeof(VertexDate) * 6;
+	vertexBufferViewSprite.StrideInBytes = sizeof(VertexDate);
+
+
+	VertexDate* vertexDateSprite = nullptr;
+	vertexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&vertexDateSprite));
+
+	vertexDateSprite[0].position = { 0.0f,360.0f,0.0f,1.0f };
+	vertexDateSprite[0].texcoord = { 0.0f,1.0f };
+	vertexDateSprite[1].position = { 0.0f,0.0f,0.0f,1.0f };
+	vertexDateSprite[1].texcoord = { 0.0f,0.0f };
+	vertexDateSprite[2].position = { 640.0f,360.0f,0.0f,1.0f };
+	vertexDateSprite[2].texcoord = { 1.0f,1.0f };
+
+	vertexDateSprite[3].position = { 0.0f,0.0f,0.0f,1.0f };
+	vertexDateSprite[3].texcoord = { 0.0f,0.0f };
+	vertexDateSprite[4].position = { 640.0f,0.0f,0.0f,1.0f };
+	vertexDateSprite[4].texcoord = { 1.0f,0.0f };
+	vertexDateSprite[5].position = { 640.0f,360.0f,0.0f,1.0f };
+	vertexDateSprite[5].texcoord = { 1.0f,1.0f };
 
 	
 
-
-
+	//
+	
 
 
 	//
@@ -1029,6 +1088,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	*wvpDate = MakeIdentity4x4();
 
+
+	ID3D12Resource* transformationMatrixResourceSprite = CreateBufferResource(device, sizeof(Matrix4x4));
+
+	Matrix4x4* transformationMatrixDateSprite = nullptr;
+	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDateSprite));
+	*transformationMatrixDateSprite = MakeIdentity4x4();
+
+
 	//ImGUI
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -1078,7 +1145,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			*wvpDate = worldViewProjectionMatrix;
 			
-			
+			*transformationMatrixDateSprite = worldViewProjectionMatrixSprate;
 
 			D3D12_RESOURCE_BARRIER barrier{};
 
@@ -1121,9 +1188,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
-			ImGui::Render();
+			commandList->DrawInstanced(6, 1, 0, 0);
+
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 
 			commandList->DrawInstanced(6, 1, 0, 0);
+
+			ImGui::Render();
+
+			
 
 			
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
@@ -1177,7 +1252,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	useAdapter->Release();
 	dxgifactory->Release();
 
-
+	vertexResourceSprite->Release();
 	vertexResource->Release();
 	graphicsPipelinestate->Release();
 	sigunatureBlob->Release();
@@ -1192,6 +1267,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	depthStencilResource->Release();
 	dsvdescriptorHeap->Release();
 
+	transformationMatrixResourceSprite->Release();
 	wvpResource->Release();
 
 	materialResource->Release();
