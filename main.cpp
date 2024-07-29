@@ -8,11 +8,14 @@
 #include <dxgidebug.h>
 #include <dxcapi.h>
 #include<vector>
+#include<cmath>
+#include<math.h>
 #include"externals/DirectXTex/DirectXTex.h"
 #include"externals/imgui/imgui.h"
 #include"externals/imgui/imgui_impl_dx12.h"
 #include"externals/imgui/imgui_impl_win32.h"
 #include"externals//DirectXTex//d3dx12.h"
+#include <corecrt_math_defines.h>
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
@@ -45,7 +48,7 @@ struct  Vector2 final
 	float y;
 };
 
-struct Vector3 final 
+struct Vector3 final
 {
 	float x;
 	float y;
@@ -339,14 +342,14 @@ Matrix4x4 cameraMatrix = MakeAffineMatrix(cameratransform.scale, cameratransform
 
 Matrix4x4 viewMatrix = Inverse(cameraMatrix);
 
-Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight),0.1f,100.0f);
+Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
 
 Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
 
 Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
-Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidth),0.0f, float(kClientHeight), 0.0f, 100.0f);
+Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidth), 0.0f, float(kClientHeight), 0.0f, 100.0f);
 Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 
@@ -354,7 +357,7 @@ Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply
 
 
 ID3D12DescriptorHeap* CreateDescriptorHeap(
-	ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible) 
+	ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible)
 {
 	ID3D12DescriptorHeap* descriptorHeap = nullptr;
 	D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
@@ -455,17 +458,17 @@ IDxcBlob* CompileShader(
 
 		assert(false);
 	}
-		IDxcBlob* shaderBlob = nullptr;
-		hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
-		assert(SUCCEEDED(hr));
+	IDxcBlob* shaderBlob = nullptr;
+	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
+	assert(SUCCEEDED(hr));
 
-		Log(ConvertString(std::format(L"Compile Suceeded,path:{},profile:{}\n", filePath, profile)));
+	Log(ConvertString(std::format(L"Compile Suceeded,path:{},profile:{}\n", filePath, profile)));
 
-		ShaderSource->Release();
-		shaderResult->Release();
+	ShaderSource->Release();
+	shaderResult->Release();
 
-		return shaderBlob;
-	
+	return shaderBlob;
+
 }
 
 ID3D12Resource* CreateBufferResource(ID3D12Device* device, size_t sizeInBytes) {
@@ -539,7 +542,7 @@ ID3D12Resource* CreateTextureResource(ID3D12Device* device, const DirectX::TexMe
 
 }
 [[nodiscard]]
-ID3D12Resource* UploadTextureDate(ID3D12Resource* texture, const DirectX::ScratchImage& mipImges,ID3D12Device* device,ID3D12GraphicsCommandList* commandList)
+ID3D12Resource* UploadTextureDate(ID3D12Resource* texture, const DirectX::ScratchImage& mipImges, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
 {
 	std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 	DirectX::PrepareUpload(device, mipImges.GetImages(), mipImges.GetImageCount(), mipImges.GetMetadata(), subresources);
@@ -611,8 +614,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	RegisterClass(&wc);
 
-	
-	
+
+
 
 	RECT wrc = { 0,0,kClientWidth,kClientHeight };
 
@@ -660,9 +663,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma region adapter
 	IDXGIAdapter4* useAdapter = nullptr;
 
-	for (UINT i = 0; dxgifactory -> EnumAdapterByGpuPreference(i,
-		DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,IID_PPV_ARGS(&useAdapter)) !=
-		DXGI_ERROR_NOT_FOUND; ++i){
+	for (UINT i = 0; dxgifactory->EnumAdapterByGpuPreference(i,
+		DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAdapter)) !=
+		DXGI_ERROR_NOT_FOUND; ++i) {
 
 		DXGI_ADAPTER_DESC3 adapterDesc{};
 		hr = useAdapter->GetDesc3(&adapterDesc);
@@ -683,7 +686,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12Device* device = nullptr;
 
 
-	
+
 
 	assert(SUCCEEDED(hr));
 
@@ -691,11 +694,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1,D3D_FEATURE_LEVEL_12_0
 	};
 
-	const char* featureLevelStrings[] = { "12.2","12.1","12.0"};
+	const char* featureLevelStrings[] = { "12.2","12.1","12.0" };
 
 	for (size_t i = 0; i < _countof(featureLevels); ++i) {
 		hr = D3D12CreateDevice(useAdapter, featureLevels[i], IID_PPV_ARGS(&device));
-	
+
 		if (SUCCEEDED(hr)) {
 			Log(std::format("FeatureLevel : {}\n", featureLevelStrings[i]));
 			break;
@@ -747,7 +750,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region Allocator
 	ID3D12CommandAllocator* commandAllocator = nullptr;
-	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&commandAllocator));
+	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
 	assert(SUCCEEDED(hr));
 #pragma endregion 
 
@@ -782,7 +785,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 
 
-	
+
 
 
 	ID3D12Resource* swapChainResources[2] = { nullptr };
@@ -792,7 +795,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 
-	
+
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
 	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -807,7 +810,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	device->CreateRenderTargetView(swapChainResources[1], &rtvDesc, rtvHandle[1]);
 
-	
+
 
 	MSG msg{};
 
@@ -834,7 +837,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
 	descriptionRootSignature.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	
+
 	D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
 	descriptorRange[0].BaseShaderRegister = 0;
 	descriptorRange[0].NumDescriptors = 1;
@@ -896,17 +899,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
 	inputLayoutDesc.pInputElementDescs = inputElementDescs;
 	inputLayoutDesc.NumElements = _countof(inputElementDescs);
-	
+
 	D3D12_BLEND_DESC blendDesc{};
 
-	blendDesc. RenderTarget[0].RenderTargetWriteMask =
+	blendDesc.RenderTarget[0].RenderTargetWriteMask =
 		D3D12_COLOR_WRITE_ENABLE_ALL;
-	
+
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
-	
+
 	IDxcBlob* vertexShaderBlob = CompileShader(L"Object3d.VS.hlsl",
 		L"vs_6_0", dxcutils, dxcCompiler, includeHandler);
 	assert(vertexShaderBlob != nullptr);
@@ -989,13 +992,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDate[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
 	vertexDate[5].texcoord = { 1.0f,1.0f, };
 
-	
+
 
 	DirectX::ScratchImage mipImages = LoadTexture("resource/uvChecker.png");
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
 	ID3D12Resource* textureResource = CreateTextureResource(device, metadata);
 	ID3D12Resource* intermeditateResource =
-	UploadTextureDate(textureResource, mipImages,device,commandList);
+		UploadTextureDate(textureResource, mipImages, device, commandList);
 
 	ID3D12Resource* depthStencilResource = CreateDepthStencilTextureResource(device, kClientWidth, kClientHeight);
 	ID3D12DescriptorHeap* dsvdescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
@@ -1009,7 +1012,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexDate) * 6);
 
-	
+
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
 	vertexBufferViewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
 	vertexBufferViewSprite.SizeInBytes = sizeof(VertexDate) * 6;
@@ -1033,12 +1036,91 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDateSprite[5].position = { 640.0f,360.0f,0.0f,1.0f };
 	vertexDateSprite[5].texcoord = { 1.0f,1.0f };
 
-	
+	const uint32_t kSubdivision = 16;
+
+	ID3D12Resource* vertexResourceSphere = CreateBufferResource(device, sizeof(VertexDate) * kSubdivision * kSubdivision * 6);
+
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
+	vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
+	vertexBufferViewSphere.SizeInBytes = sizeof(VertexDate)* kSubdivision*kSubdivision* 6;
+	vertexBufferViewSphere.StrideInBytes = sizeof(VertexDate);
+
+
+	VertexDate* vertexDateSphere = nullptr;
+	vertexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&vertexDateSphere));
 
 
 
-	//
-	
+
+
+	const float kLonEvery = float(M_PI) * 2.0f / float(kSubdivision);
+	const float kLatEvery = float(M_PI) / float(kSubdivision);
+
+	uint32_t start = 0;
+
+	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex)
+	{
+		float lat = -float(M_PI) / 2.0f + kLatEvery * latIndex;
+
+		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex)
+		{
+			start = (latIndex * kSubdivision + lonIndex) * 6;
+
+			float lon = lonIndex * kLonEvery;
+
+
+			VertexDate vertA = {
+				   {
+					std::cosf(lat) * std::cosf(lon),
+					std::sinf(lat),
+					std::cosf(lat) * std::sinf(lon),
+					1.0f},{
+				float(lonIndex + 1) / float(kSubdivision),
+				1.0f - float(latIndex + 1) / float(kSubdivision)}
+			};
+
+			VertexDate vertB = {
+				{std::cosf(lat + kLatEvery) * std::cosf(lon),
+				std::sinf(lat + kLatEvery),
+				std::cosf(lat + kLatEvery) * std::sinf(lon),
+			1.0f
+				},{
+				float(lonIndex + 1) / float(kSubdivision),
+				1.0f - float(latIndex + 1) / float(kSubdivision)}
+
+			};
+
+			VertexDate vertC = {
+				{std::cosf(lat) * std::cosf(lon + kLonEvery),
+				std::sinf(lat ),
+				std::cosf(lat) * std::sinf(lon + kLonEvery),
+				1.0f
+				},{
+				float(lonIndex + 1) / float(kSubdivision),
+				1.0f - float(latIndex + 1) / float(kSubdivision)}
+			};
+
+			VertexDate vertD = {
+				{
+					std::cosf(lat + kLatEvery) * std::cosf(lon + kLonEvery),
+					std::sinf(lat + kLatEvery),
+					std::cosf(lat + kLatEvery) * std::sinf(lon + kLonEvery),
+					1.0f
+				},{
+				float(lonIndex + 1) / float(kSubdivision),
+				1.0f - float(latIndex + 1) / float(kSubdivision)}
+			};
+
+			vertexDateSphere[start + 0] = vertA ;
+			vertexDateSphere[start + 1] = vertB;
+			vertexDateSphere[start + 2] = vertC;
+			vertexDateSphere[start + 3] = vertC;
+			vertexDateSphere[start + 4] = vertB;
+			vertexDateSphere[start + 5] = vertD;
+		}
+	}
+
+
 
 
 	//
@@ -1056,7 +1138,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//SRV
 	device->CreateShaderResourceView(textureResource, &srvDesc, textureSrvHandleCPU);
 
-	
+
 
 
 
@@ -1111,7 +1193,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 	while (msg.message != WM_QUIT) {
-		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
@@ -1131,22 +1213,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
 
 			ImGui::End();
-			
+
 
 
 
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
 			//transform.rotate.y += 0.03f;
-			
+
 			worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
-			
+
 			worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
 
 
 			*wvpDate = worldViewProjectionMatrix;
-			
+
 			*transformationMatrixDateSprite = worldViewProjectionMatrixSprate;
 
 			D3D12_RESOURCE_BARRIER barrier{};
@@ -1164,8 +1246,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->OMSetRenderTargets(1, &rtvHandle[backBufferIndex], false, &dsvHandle);
 
 			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f, };
-			commandList->ClearRenderTargetView(rtvHandle[backBufferIndex],clearColor,0,nullptr);
-		
+			commandList->ClearRenderTargetView(rtvHandle[backBufferIndex], clearColor, 0, nullptr);
+
 			commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 
@@ -1180,7 +1262,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootSignature(rootSignature);
 			commandList->SetPipelineState(graphicsPipelinestate);
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferview);
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
 
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -1190,7 +1272,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawInstanced(kSubdivision * kSubdivision * 6, 1, 0, 0);
 
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
@@ -1200,9 +1282,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			ImGui::Render();
 
-			
 
-			
+
+
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -1221,7 +1303,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			fenceValue++;
 
 			commandQueue->Signal(fence, fenceValue);
-			if (fence->GetCompletedValue()<fenceValue)
+			if (fence->GetCompletedValue() < fenceValue)
 			{
 				fence->SetEventOnCompletion(fenceValue, fenceEvent);
 				WaitForSingleObject(fenceEvent, INFINITE);
@@ -1234,7 +1316,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 	}
-	
+
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
@@ -1254,6 +1336,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	useAdapter->Release();
 	dxgifactory->Release();
 
+	vertexResourceSphere->Release();
 	vertexResourceSprite->Release();
 	vertexResource->Release();
 	graphicsPipelinestate->Release();
@@ -1274,7 +1357,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	materialResource->Release();
 	intermeditateResource->Release();
-	
+
 
 	device->Release();
 
@@ -1285,7 +1368,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #endif
 	CloseWindow(hwnd);
 
-	
+
 	IDXGIDebug1* debug;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
 		debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
