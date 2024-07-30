@@ -1075,8 +1075,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 					std::sinf(lat),
 					std::cosf(lat) * std::sinf(lon),
 					1.0f},{
-				float(lonIndex + 1) / float(kSubdivision),
-				1.0f - float(latIndex + 1) / float(kSubdivision)}
+				float(lonIndex) / float(kSubdivision),
+				1.0f - float(latIndex) / float(kSubdivision)}
 			};
 
 			VertexDate vertB = {
@@ -1085,7 +1085,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				std::cosf(lat + kLatEvery) * std::sinf(lon),
 			1.0f
 				},{
-				float(lonIndex + 1) / float(kSubdivision),
+				float(lonIndex) / float(kSubdivision),
 				1.0f - float(latIndex + 1) / float(kSubdivision)}
 
 			};
@@ -1097,7 +1097,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				1.0f
 				},{
 				float(lonIndex + 1) / float(kSubdivision),
-				1.0f - float(latIndex + 1) / float(kSubdivision)}
+				1.0f - float(latIndex) / float(kSubdivision)}
 			};
 
 			VertexDate vertD = {
