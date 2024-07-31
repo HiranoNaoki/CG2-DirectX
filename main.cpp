@@ -1042,10 +1042,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	DirectX::ScratchImage mipImages2 = LoadTexture("resource/monsterBall.png");
-	const DirectX::TexMetadata& metadata2 = mipImages.GetMetadata();
+	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	ID3D12Resource* textureResource2 = CreateTextureResource(device, metadata2);
-	intermeditateResource =
-	UploadTextureDate(textureResource2, mipImages2, device, commandList);
+	ID3D12Resource* intermeditateResource2 =
+	  UploadTextureDate(textureResource2, mipImages2, device, commandList);
 
 
 
@@ -1128,8 +1128,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 					std::sinf(lat),
 					std::cosf(lat) * std::sinf(lon),
 					1.0f},{
-				float(lonIndex + 1) / float(kSubdivision),
-				1.0f - float(latIndex + 1) / float(kSubdivision)}
+				float(lonIndex) / float(kSubdivision),
+				1.0f - float(latIndex) / float(kSubdivision)}
 			};
 
 			VertexDate vertB = {
@@ -1138,7 +1138,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				std::cosf(lat + kLatEvery) * std::sinf(lon),
 			1.0f
 				},{
-				float(lonIndex + 1) / float(kSubdivision),
+				float(lonIndex) / float(kSubdivision),
 				1.0f - float(latIndex + 1) / float(kSubdivision)}
 
 			};
@@ -1150,7 +1150,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				1.0f
 				},{
 				float(lonIndex + 1) / float(kSubdivision),
-				1.0f - float(latIndex + 1) / float(kSubdivision)}
+				1.0f - float(latIndex) / float(kSubdivision)}
 			};
 
 			VertexDate vertD = {
@@ -1183,8 +1183,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 	//
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 1);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGPUDescriptorHandle(srvDescriptorHeap, desriptorSizeSRV, 1);
 	//
 	textureSrvHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	textureSrvHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -1255,7 +1255,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplDX12_Init(device,
 		swapChainDesc.BufferCount,
@@ -1285,7 +1284,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
 
 			ImGui::End();
-
+			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 
 
 
@@ -1423,6 +1422,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexShaderBlob->Release();
 
 	textureResource->Release();
+	textureResource2->Release();
 	depthStencilResource->Release();
 	dsvdescriptorHeap->Release();
 
@@ -1431,6 +1431,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	materialResource->Release();
 	intermeditateResource->Release();
+	intermeditateResource2->Release();
 
 
 	device->Release();
