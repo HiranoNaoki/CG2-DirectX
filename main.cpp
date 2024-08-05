@@ -67,6 +67,7 @@ struct VertexDate
 {
 	Vector4 position;
 	Vector2 texcoord;
+	Vector3 normal;
 };
 
 struct Matrix4x4 final {
@@ -324,6 +325,25 @@ struct Transform
 	Vector3 scale;
 	Vector3 rotate;
 	Vector3 translate;
+};
+
+struct Material
+{
+	Vector4  color;
+	int32_t enableLighting;
+};
+
+struct TransformatioMatrix
+{
+	Matrix4x4 WVP;
+	Matrix4x4 World;
+};
+
+struct  DirectionaLight
+{
+	Vector4 color;
+	Vector3 direction;
+	float intensity;
 };
 
 const int32_t kClientWidth = 1280;
@@ -885,7 +905,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 
-	D3D12_ROOT_PARAMETER rootParameters[3] = {};
+	D3D12_ROOT_PARAMETER rootParameters[4] = {};
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[0].Descriptor.ShaderRegister = 0;
@@ -896,6 +916,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[2].DescriptorTable.pDescriptorRanges = descriptorRange;
 	rootParameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+	rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParameters[3].Descriptor.ShaderRegister = 1;
+
 	descriptionRootSignature.pParameters = rootParameters;
 	descriptionRootSignature.NumParameters = _countof(rootParameters);
 
@@ -927,7 +951,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 	//InputLayout
-	D3D12_INPUT_ELEMENT_DESC inputElementDescs[2] = {};
+	D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
 	inputElementDescs[0].SemanticName = "POSITION";
 	inputElementDescs[0].SemanticIndex = 0;
 	inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
@@ -936,6 +960,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	inputElementDescs[1].SemanticIndex = 0;
 	inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
 	inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+	inputElementDescs[2].SemanticName = "NORMAL";
+	inputElementDescs[2].SemanticIndex = 0;
+	inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
 	inputLayoutDesc.pInputElementDescs = inputElementDescs;
 	inputLayoutDesc.NumElements = _countof(inputElementDescs);
@@ -1016,21 +1045,41 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	vertexDate[0].position = { -0.5f,-0.5,0.0f,1.0f };
 	vertexDate[0].texcoord = { 0.0f,1.0f };
+	vertexDate[0].normal.x = vertexDate[0].position.x;
+	vertexDate[0].normal.y = vertexDate[0].position.y;
+	vertexDate[0].normal.z = vertexDate[0].position.z;
 
 	vertexDate[1].position = { 0.0f,0.5f,0.0f,1.0f };
 	vertexDate[1].texcoord = { 0.5f,0.0f };
+	vertexDate[1].normal.x = vertexDate[1].position.x;
+	vertexDate[1].normal.y = vertexDate[1].position.y;
+	vertexDate[1].normal.z = vertexDate[1].position.z;
 
 	vertexDate[2].position = { 0.5f,-0.5f,0.0f,1.0f };
 	vertexDate[2].texcoord = { 1.0f,1.0f };
+	vertexDate[2].normal.x = vertexDate[2].position.x;
+	vertexDate[2].normal.y = vertexDate[2].position.y;
+	vertexDate[2].normal.z = vertexDate[2].position.z;
 
 	vertexDate[3].position = { -0.5f,-0.5f,0.5f,1.0f };
 	vertexDate[3].texcoord = { 0.0f,1.0f };
+	vertexDate[3].normal.x = vertexDate[3].position.x;
+	vertexDate[3].normal.y = vertexDate[3].position.y;
+	vertexDate[3].normal.z = vertexDate[3].position.z;
 
 	vertexDate[4].position = { 0.0f,0.0f,0.0f,1.0f };
 	vertexDate[4].texcoord = { 0.5f,0.0f };
+	vertexDate[4].normal.x = vertexDate[4].position.x;
+	vertexDate[4].normal.y = vertexDate[4].position.y;
+	vertexDate[4].normal.z = vertexDate[4].position.z;
 
 	vertexDate[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
 	vertexDate[5].texcoord = { 1.0f,1.0f, };
+	vertexDate[5].normal.x = vertexDate[5].position.x;
+	vertexDate[5].normal.y = vertexDate[5].position.y;
+	vertexDate[5].normal.z = vertexDate[5].position.z;
+
+	
 
 
 
@@ -1077,17 +1126,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	vertexDateSprite[0].position = { 0.0f,360.0f,0.0f,1.0f };
 	vertexDateSprite[0].texcoord = { 0.0f,1.0f };
+	vertexDateSprite[0].normal = { 0.0f,0.0f,-1.0f };
 	vertexDateSprite[1].position = { 0.0f,0.0f,0.0f,1.0f };
 	vertexDateSprite[1].texcoord = { 0.0f,0.0f };
+	vertexDateSprite[1].normal = { 0.0f,0.0f,-1.0f };
 	vertexDateSprite[2].position = { 640.0f,360.0f,0.0f,1.0f };
 	vertexDateSprite[2].texcoord = { 1.0f,1.0f };
+	vertexDateSprite[2].normal = { 0.0f,0.0f,-1.0f };
 
 	vertexDateSprite[3].position = { 0.0f,0.0f,0.0f,1.0f };
 	vertexDateSprite[3].texcoord = { 0.0f,0.0f };
+	vertexDateSprite[3].normal = { 0.0f,0.0f,-1.0f };
 	vertexDateSprite[4].position = { 640.0f,0.0f,0.0f,1.0f };
 	vertexDateSprite[4].texcoord = { 1.0f,0.0f };
+	vertexDateSprite[4].normal = { 0.0f,0.0f,-1.0f };
 	vertexDateSprite[5].position = { 640.0f,360.0f,0.0f,1.0f };
 	vertexDateSprite[5].texcoord = { 1.0f,1.0f };
+	vertexDateSprite[5].normal = { 0.0f,0.0f,-1.0f };
 
 	const uint32_t kSubdivision = 16;
 
@@ -1233,6 +1288,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector4* materialDate = nullptr;
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
 
+	
+
 	*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
 
 	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
@@ -1244,11 +1301,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	*wvpDate = MakeIdentity4x4();
 
 
-	ID3D12Resource* transformationMatrixResourceSprite = CreateBufferResource(device, sizeof(Matrix4x4));
+	//
+	ID3D12Resource* materialResourceSprite = CreateBufferResource(device, sizeof(Material));
+
+	Material* materialDateSprite = nullptr;
+	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDateSprite));
+	materialDateSprite->enableLighting = false;
+
+	//
+	ID3D12Resource* transformationMatrixResourceSprite = CreateBufferResource(device, sizeof(TransformatioMatrix));
 
 	Matrix4x4* transformationMatrixDateSprite = nullptr;
 	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDateSprite));
 	*transformationMatrixDateSprite = MakeIdentity4x4();
+
+	//
+	ID3D12Resource* directionalLightResource = CreateBufferResource(device, sizeof(DirectionaLight));
+
+	DirectionaLight* directionalLightDate = nullptr;
+	directionalLightResource->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDate));
+	directionalLightDate->color = { 1.0f,1.0f,1.0f,1.0f };
+	directionalLightDate->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightDate->intensity = 1.0f;
+
 
 
 	//ImGUI
@@ -1296,7 +1371,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
-
+		
 
 			*wvpDate = worldViewProjectionMatrix;
 
@@ -1337,7 +1412,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+			
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
+
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
@@ -1426,6 +1504,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	depthStencilResource->Release();
 	dsvdescriptorHeap->Release();
 
+	materialResourceSprite->Release();
 	transformationMatrixResourceSprite->Release();
 	wvpResource->Release();
 
