@@ -73,6 +73,11 @@ struct Matrix4x4 final {
 	float m[4][4];
 };
 
+struct  Matrix3x3 final
+{
+	float m[3][3];
+};
+
 Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 {
 	Matrix4x4 ans;
@@ -324,6 +329,20 @@ struct Transform
 	Vector3 scale;
 	Vector3 rotate;
 	Vector3 translate;
+};
+
+struct  Material
+{
+	Vector4 color;
+	int32_t enableLighting;
+	float padding[3];
+	Matrix4x4 uvTransform;
+};
+
+Transform uvTransformSprite{
+	{1.0f,1.0f,1.0f},
+	{0.0f,0.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 const int32_t kClientWidth = 1280;
@@ -1228,12 +1247,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	scissorRect.top = 0;
 	scissorRect.bottom = kClientHeight;
 
-	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Vector4));
+	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Material));
+	
+	ID3D12Resource* materialResourceSprite = CreateBufferResource(device, sizeof(Material));
+	
+	Material* materialDate = nullptr;
+	Material* materialDateSprite = nullptr;
 
-	Vector4* materialDate = nullptr;
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
+	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDateSprite));
 
-	*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+	materialDate->uvTransform = MakeIdentity4x4();
+
+	materialDateSprite->uvTransform = MakeIdentity4x4();
+
+	
 
 	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
 
@@ -1266,6 +1294,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	indexDateSprite[0] = 0; indexDateSprite[1] = 1; indexDateSprite[2] = 2;
 	indexDateSprite[3] = 1; indexDateSprite[4] = 3; indexDateSprite[5];
 
+	
 
 	//ImGUI
 	IMGUI_CHECKVERSION();
@@ -1294,10 +1323,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Begin("anju");
 
 
-			ImGui::ColorEdit3("RGB", &materialDate->x);
+			ImGui::ColorEdit3("RGB", &materialDate->color.x);
 			ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f);
 			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
 			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
+
+			ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+			ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
 
 			ImGui::End();
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
@@ -1312,6 +1345,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
+			
 
 
 			*wvpDate = worldViewProjectionMatrix;
@@ -1329,8 +1363,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->ResourceBarrier(1, &barrier);
 
 
+			
 			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvdescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 			commandList->OMSetRenderTargets(1, &rtvHandle[backBufferIndex], false, &dsvHandle);
+
+			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+			materialDateSprite->uvTransform = uvTransformMatrix;
+
+
+
 
 			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f, };
 			commandList->ClearRenderTargetView(rtvHandle[backBufferIndex], clearColor, 0, nullptr);
@@ -1369,7 +1412,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->DrawInstanced(6, 1, 0, 0);
 
+
 			commandList->IASetIndexBuffer(&indexBufferViewSprite);
+
+			commandList->SetGraphicsRootConstantBufferView(1, materialResourceSprite->GetGPUVirtualAddress());
 
 			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
@@ -1451,7 +1497,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	transformationMatrixResourceSprite->Release();
 	wvpResource->Release();
 
+	
 	materialResource->Release();
+	materialResourceSprite->Release();
 	intermeditateResource->Release();
 	intermeditateResource2->Release();
 
