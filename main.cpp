@@ -74,6 +74,11 @@ struct Matrix4x4 final {
 	float m[4][4];
 };
 
+struct Matrix3x3 final
+{
+	float m[3][3];
+};
+
 Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 {
 	Matrix4x4 ans;
@@ -331,6 +336,8 @@ struct Material
 {
 	Vector4  color;
 	int32_t enableLighting;
+	float padding[3];
+	Matrix4x4 uvTransform;
 };
 
 struct TransformatioMatrix
@@ -346,6 +353,14 @@ struct  DirectionaLight
 	Vector4 color;
 	Vector3 direction;
 	float intensity;
+};
+
+
+
+Transform uvTransformSprite{
+	{1.0f,1.0f,1.0f},
+	{0.0f,0.0f,0.0f},
+	{0.0f,0.0f,0.0f},
 };
 
 const int32_t kClientWidth = 1280;
@@ -1315,6 +1330,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector4* materialDate = nullptr;
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
 
+	
 
 
 	*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -1339,12 +1355,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDateSprite));
 	materialDateSprite->color = { 1.0f,1.0f,1.0f,1.0f };
 	materialDateSprite->enableLighting = true;
+	materialDateSprite->uvTransform = MakeIdentity4x4();
 
 	ID3D12Resource* windowResourceSprite = CreateBufferResource(device, sizeof(Material));
 
 	Material* windowDateSprite = nullptr;
 	windowResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&windowDateSprite));
 	windowDateSprite->color = { 1.0f,1.0f,1.0f,1.0f };
+	windowDateSprite->uvTransform = MakeIdentity4x4();
 	windowDateSprite->enableLighting = false;
 
 	//
@@ -1417,6 +1435,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("Light Direction", &directionalLightDate->direction.x, 0.01f);
 			ImGui::DragFloat("Light Intensity", &directionalLightDate->intensity, 0.01f);
 
+			ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+			ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+
+
+
 			ImGui::End();
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 
@@ -1461,6 +1485,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvdescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 			commandList->OMSetRenderTargets(1, &rtvHandle[backBufferIndex], false, &dsvHandle);
 
+
+
+			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+			windowDateSprite->uvTransform = uvTransformMatrix;
+
+
+
+
 			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f, };
 			commandList->ClearRenderTargetView(rtvHandle[backBufferIndex], clearColor, 0, nullptr);
 
@@ -1503,14 +1537,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//sprite
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
-			commandList->IASetIndexBuffer(&indexBufferviewSprite);
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 			
 			commandList->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
 
+			commandList->DrawInstanced(6, 1, 0, 0);
+
 			
-	
+			commandList->IASetIndexBuffer(&indexBufferviewSprite);
 			
 				commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 			
