@@ -337,6 +337,8 @@ struct TransformatioMatrix
 {
 	Matrix4x4 WVP;
 	Matrix4x4 World;
+	
+
 };
 
 struct  DirectionaLight
@@ -906,16 +908,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	D3D12_ROOT_PARAMETER rootParameters[4] = {};
+	//material
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[0].Descriptor.ShaderRegister = 0;
+	//transformatrix
 	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 	rootParameters[1].Descriptor.ShaderRegister = 0;
+	//texture
 	rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[2].DescriptorTable.pDescriptorRanges = descriptorRange;
 	rootParameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+	//directionalLight
 	rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[3].Descriptor.ShaderRegister = 1;
@@ -1079,7 +1085,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDate[5].normal.y = vertexDate[5].position.y;
 	vertexDate[5].normal.z = vertexDate[5].position.z;
 
-	
+
 
 
 
@@ -1094,7 +1100,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	ID3D12Resource* textureResource2 = CreateTextureResource(device, metadata2);
 	ID3D12Resource* intermeditateResource2 =
-	  UploadTextureDate(textureResource2, mipImages2, device, commandList);
+		UploadTextureDate(textureResource2, mipImages2, device, commandList);
 
 
 
@@ -1150,7 +1156,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
 	vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
-	vertexBufferViewSphere.SizeInBytes = sizeof(VertexDate)* kSubdivision*kSubdivision* 6;
+	vertexBufferViewSphere.SizeInBytes = sizeof(VertexDate) * kSubdivision * kSubdivision * 6;
 	vertexBufferViewSphere.StrideInBytes = sizeof(VertexDate);
 
 
@@ -1184,7 +1190,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 					std::cosf(lat) * std::sinf(lon),
 					1.0f},{
 				float(lonIndex) / float(kSubdivision),
-				1.0f - float(latIndex) / float(kSubdivision)}
+				1.0f - float(latIndex) / float(kSubdivision)},{
+					std::cosf(lat)* std::cosf(lon),
+					std::sinf(lat),
+					std::cosf(lat)* std::sinf(lon),
+				}
+
 			};
 
 			VertexDate vertB = {
@@ -1194,18 +1205,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			1.0f
 				},{
 				float(lonIndex) / float(kSubdivision),
-				1.0f - float(latIndex + 1) / float(kSubdivision)}
+				1.0f - float(latIndex + 1) / float(kSubdivision)},{
+					std::cosf(lat + kLatEvery)* std::cosf(lon),
+				std::sinf(lat + kLatEvery),
+				std::cosf(lat + kLatEvery)* std::sinf(lon)
+
+				}
 
 			};
 
 			VertexDate vertC = {
 				{std::cosf(lat) * std::cosf(lon + kLonEvery),
-				std::sinf(lat ),
+				std::sinf(lat),
 				std::cosf(lat) * std::sinf(lon + kLonEvery),
 				1.0f
 				},{
 				float(lonIndex + 1) / float(kSubdivision),
-				1.0f - float(latIndex) / float(kSubdivision)}
+				1.0f - float(latIndex) / float(kSubdivision)},{
+					std::cosf(lat)* std::cosf(lon + kLonEvery),
+				std::sinf(lat),
+				std::cosf(lat)* std::sinf(lon + kLonEvery)
+
+				}
 			};
 
 			VertexDate vertD = {
@@ -1217,9 +1238,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				},{
 				float(lonIndex + 1) / float(kSubdivision),
 				1.0f - float(latIndex + 1) / float(kSubdivision)}
+				,{
+					std::cosf(lat + kLatEvery) * std::cosf(lon + kLonEvery),
+					std::sinf(lat + kLatEvery),
+					std::cosf(lat + kLatEvery) * std::sinf(lon + kLonEvery),
+					
+			}
 			};
 
-			vertexDateSphere[start + 0] = vertA ;
+			vertexDateSphere[start + 0] = vertA;
 			vertexDateSphere[start + 1] = vertB;
 			vertexDateSphere[start + 2] = vertC;
 			vertexDateSphere[start + 3] = vertC;
@@ -1288,32 +1315,44 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector4* materialDate = nullptr;
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
 
-	
+
 
 	*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
 
-	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
+	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(TransformatioMatrix));
 
-	Matrix4x4* wvpDate = nullptr;
+	TransformatioMatrix* wvpDate = nullptr;
+
 
 	wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&wvpDate));
 
-	*wvpDate = MakeIdentity4x4();
 
+	wvpDate->WVP = MakeIdentity4x4();
+	wvpDate->World = MakeIdentity4x4();
+
+	
 
 	//
 	ID3D12Resource* materialResourceSprite = CreateBufferResource(device, sizeof(Material));
 
 	Material* materialDateSprite = nullptr;
 	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDateSprite));
-	materialDateSprite->enableLighting = false;
+	materialDateSprite->color = { 1.0f,1.0f,1.0f,1.0f };
+	materialDateSprite->enableLighting = true;
+
+	ID3D12Resource* windowResourceSprite = CreateBufferResource(device, sizeof(Material));
+
+	Material* windowDateSprite = nullptr;
+	windowResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&windowDateSprite));
+	windowDateSprite->color = { 1.0f,1.0f,1.0f,1.0f };
+	windowDateSprite->enableLighting = false;
 
 	//
 	ID3D12Resource* transformationMatrixResourceSprite = CreateBufferResource(device, sizeof(TransformatioMatrix));
 
-	Matrix4x4* transformationMatrixDateSprite = nullptr;
+	TransformatioMatrix* transformationMatrixDateSprite = nullptr;
 	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDateSprite));
-	*transformationMatrixDateSprite = MakeIdentity4x4();
+	transformationMatrixDateSprite->WVP = MakeIdentity4x4();
 
 	//
 	ID3D12Resource* directionalLightResource = CreateBufferResource(device, sizeof(DirectionaLight));
@@ -1324,7 +1363,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	directionalLightDate->direction = { 0.0f,-1.0f,0.0f };
 	directionalLightDate->intensity = 1.0f;
 
-
+	
 
 	//ImGUI
 	IMGUI_CHECKVERSION();
@@ -1357,12 +1396,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f);
 			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
 			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
+			
+			ImGui::DragFloat4("Light color", &directionalLightDate->color.x, 0.01f);
+			ImGui::DragFloat3("Light Direction", &directionalLightDate->direction.x, 0.01f);
+			ImGui::DragFloat("Light Intensity", &directionalLightDate->intensity, 0.01f);
 
 			ImGui::End();
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 
 
-
+			
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
 			//transform.rotate.y += 0.03f;
@@ -1373,9 +1416,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		
 
-			*wvpDate = worldViewProjectionMatrix;
+			wvpDate->WVP = worldViewProjectionMatrix;
+			wvpDate->World = worldMatrix;
 
-			*transformationMatrixDateSprite = worldViewProjectionMatrixSprate;
+
+
+
+
+			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
+			Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
+			Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidth), 0.0f, float(kClientHeight), 0.0f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+
+			transformationMatrixDateSprite->WVP = worldViewProjectionMatrixSprate;
+			transformationMatrixDateSprite->World = worldMatrixSprite;
 
 			D3D12_RESOURCE_BARRIER barrier{};
 
@@ -1413,23 +1467,42 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 			
+			
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
 
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
+			
+
+			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
+
+			
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
 			commandList->DrawInstanced(kSubdivision * kSubdivision * 6, 1, 0, 0);
 
+			
+			//sprite
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+			
+			commandList->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
 
+			
+			
+			
+			
 			commandList->DrawInstanced(6, 1, 0, 0);
+			
+
+			
+
+			
 
 			ImGui::Render();
 
@@ -1504,6 +1577,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	depthStencilResource->Release();
 	dsvdescriptorHeap->Release();
 
+	windowResourceSprite->Release();
+	directionalLightResource->Release();
 	materialResourceSprite->Release();
 	transformationMatrixResourceSprite->Release();
 	wvpResource->Release();

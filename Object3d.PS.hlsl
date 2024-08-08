@@ -9,7 +9,7 @@ int32_t enableLighting;
 
 struct DirectionalLight{
 float32_t4 color;
-float32_t4 direction;
+float32_t3 direction;
 float intensity;
 };
 
@@ -30,12 +30,12 @@ float32_t4 textureColor = gTexture.Sample(gSampler, input.texcoord);
 if (gMaterial.enableLighting !=0){
 
 float cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction.xyz));
+
 output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intensity;
 }else{
 
 output.color = gMaterial.color * textureColor;
 }
-
 return output;
 
 };
