@@ -1363,7 +1363,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	directionalLightDate->direction = { 0.0f,-1.0f,0.0f };
 	directionalLightDate->intensity = 1.0f;
 
-	
+	ID3D12Resource* indexResourceSprite = CreateBufferResource(device, sizeof(uint32_t) * 6);
 
 	//ImGUI
 	IMGUI_CHECKVERSION();
