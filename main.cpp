@@ -10,6 +10,8 @@
 #include<vector>
 #include<cmath>
 #include<math.h>
+#include<fstream>
+#include<sstream>
 #include"externals/DirectXTex/DirectXTex.h"
 #include"externals/imgui/imgui.h"
 #include"externals/imgui/imgui_impl_dx12.h"
@@ -77,6 +79,18 @@ struct Matrix4x4 final {
 struct Matrix3x3 final
 {
 	float m[3][3];
+};
+
+
+struct MaterialData
+{
+	std::string textureFilePath;
+};
+
+struct ModelData
+{
+	std::vector<VertexDate> vertices;
+	MaterialData material;
 };
 
 Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
@@ -362,6 +376,113 @@ Transform uvTransformSprite{
 	{0.0f,0.0f,0.0f},
 	{0.0f,0.0f,0.0f},
 };
+
+
+MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
+	 
+	MaterialData materialData; 
+	std::string line; 
+	
+	std::ifstream file(directoryPath + "/" + filename); 
+	assert(file.is_open()); 
+	
+	while (std::getline(file, line)) {
+		std::string identifier;
+		std::istringstream s(line);
+		s >> identifier;
+
+		
+		if (identifier == "map_Kd") {
+			std::string textureFilename;
+			s >> textureFilename;
+			
+			materialData.textureFilePath = directoryPath + "/" + textureFilename;
+		}
+	}
+	
+	return materialData;
+}
+
+
+
+
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename) {
+	
+	ModelData modelData; 
+	std::vector<Vector4> positions; 
+	std::vector<Vector3> normals; 
+	std::vector<Vector2> texcoords; 
+	std::string line; 
+
+	
+	std::ifstream file(directoryPath + "/" + filename); 
+	assert(file.is_open()); 
+	
+	while (std::getline(file, line))
+	{
+		std::string identifier;
+		std::istringstream s(line);
+		s >> identifier; 
+
+		
+		if (identifier == "v") {
+			Vector4 position;
+			s >> position.x >> position.y >> position.z;
+			position.w = 1.0f;
+			positions.push_back(position);
+		}
+		else if (identifier == "vt") {
+			Vector2 texcoord;
+			s >> texcoord.x >> texcoord.y;
+			texcoords.push_back(texcoord);
+		}
+		else if (identifier == "vn") {
+			Vector3 normal;
+			s >> normal.x >> normal.y >> normal.z;
+			normals.push_back(normal);
+		}
+		else if (identifier == "f") {
+			VertexDate triangle[3];
+
+			
+			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex) {
+				std::string vertexDefinition;
+				s >> vertexDefinition;
+			
+				std::istringstream v(vertexDefinition);
+				uint32_t elementIndices[3];
+				for (int32_t element = 0; element < 3; ++element) {
+					std::string index;
+					std::getline(v, index, '/'); 
+					elementIndices[element] = std::stoi(index);
+				}
+				
+				Vector4 position = positions[elementIndices[0] - 1];
+				Vector2 texcoord = texcoords[elementIndices[1] - 1];
+				Vector3 normal = normals[elementIndices[2] - 1];
+			
+				position.x *= -1.0f;
+				texcoord.y = 1.0f - texcoord.y;
+				normal.x *= -1.0f;
+
+				triangle[faceVertex] = { position, texcoord, normal };
+			}
+		
+			modelData.vertices.push_back(triangle[2]);
+			modelData.vertices.push_back(triangle[1]);
+			modelData.vertices.push_back(triangle[0]);
+		}
+		else if (identifier == "mtllib") {
+			
+			std::string materialFilename;
+			s >> materialFilename;
+			
+			modelData.material = LoadMaterialTemplateFile(directoryPath, materialFilename);
+		}
+	}
+
+	return modelData;
+}
 
 const int32_t kClientWidth = 1280;
 const int32_t kClientHeight = 720;
@@ -910,10 +1031,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = dxcutils->CreateDefaultIncludeHandler(&includeHandler);
 	assert(SUCCEEDED(hr));
 
+
+	ModelData modelData = LoadObjFile("resource", "axis.obj");
+	//DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * modelData.vertices.size());
+	
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+
+	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress(); 
+	
+	vertexBufferView.SizeInBytes = UINT(sizeof(VertexDate) * modelData.vertices.size());
+	
+	vertexBufferView.StrideInBytes = sizeof(VertexDate); 
+	
+	VertexDate* vertexData = nullptr;
+
+	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+	std::memcpy(vertexData, modelData.vertices.data(), sizeof(VertexDate)* modelData.vertices.size()); 
+
+
 	//Rootsignature
 	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
 	descriptionRootSignature.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
 
 	D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
 	descriptorRange[0].BaseShaderRegister = 0;
@@ -1050,7 +1191,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		IID_PPV_ARGS(&graphicsPipelinestate));
 	assert(SUCCEEDED(hr));
 
-	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * 6);
+	/*ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * 6);
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferview{};
 
@@ -1098,7 +1239,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDate[5].texcoord = { 1.0f,1.0f, };
 	vertexDate[5].normal.x = vertexDate[5].position.x;
 	vertexDate[5].normal.y = vertexDate[5].position.y;
-	vertexDate[5].normal.z = vertexDate[5].position.z;
+	vertexDate[5].normal.z = vertexDate[5].position.z;*/
 
 
 
@@ -1520,10 +1661,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
 
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(0, vertexResource->GetGPUVirtualAddress());
 
-			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
-
+			
 
 
 			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
@@ -1531,7 +1671,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
-			commandList->DrawInstanced(kSubdivision * kSubdivision * 6, 1, 0, 0);
+			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+
+
+			commandList->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
 
 
 			//sprite
@@ -1543,12 +1686,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
 
-			commandList->DrawInstanced(6, 1, 0, 0);
+			//commandList->DrawInstanced(6, 1, 0, 0);
 
 
 			commandList->IASetIndexBuffer(&indexBufferviewSprite);
 
-			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+			//commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 
 
