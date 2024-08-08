@@ -1365,6 +1365,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	ID3D12Resource* indexResourceSprite = CreateBufferResource(device, sizeof(uint32_t) * 6);
 
+	D3D12_INDEX_BUFFER_VIEW indexBufferviewSprite{};
+
+	indexBufferviewSprite.BufferLocation = indexResourceSprite->GetGPUVirtualAddress();
+
+	indexBufferviewSprite.SizeInBytes = sizeof(uint32_t) * 6;
+
+	indexBufferviewSprite.Format = DXGI_FORMAT_R32_UINT;
+
+	uint32_t* indexDateSprite = nullptr;
+	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDateSprite));
+	indexDateSprite[0] = 0; indexDateSprite[1] = 1; indexDateSprite[2] = 2;
+	indexDateSprite[3] = 1; indexDateSprite[4] = 3; indexDateSprite[5] = 2;
+
+
+
+
 	//ImGUI
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -1487,17 +1503,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//sprite
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+			commandList->IASetIndexBuffer(&indexBufferviewSprite);
 
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 			
 			commandList->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
 
 			
+	
 			
-			
-			
-			commandList->DrawInstanced(6, 1, 0, 0);
+				commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 			
 
 			
@@ -1577,6 +1592,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	depthStencilResource->Release();
 	dsvdescriptorHeap->Release();
 
+
+	indexResourceSprite->Release();
 	windowResourceSprite->Release();
 	directionalLightResource->Release();
 	materialResourceSprite->Release();
