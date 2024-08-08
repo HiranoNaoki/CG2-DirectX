@@ -29,8 +29,9 @@ float32_t4 textureColor = gTexture.Sample(gSampler, input.texcoord);
 
 if (gMaterial.enableLighting !=0){
 
-float cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction.xyz));
+float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction.xyz);
 
+float cos = pow(NdotL * 0.5f+0.5f,2.0f);
 output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intensity;
 }else{
 
