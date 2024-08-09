@@ -510,7 +510,9 @@ Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
 Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidth), 0.0f, float(kClientHeight), 0.0f, 100.0f);
 Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
-
+bool DepthFunc(float currZ, float prevZ) {
+	return currZ <= prevZ;;
+};
 
 
 
@@ -960,6 +962,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
+	
+	ID3D12DescriptorHeap* dsvDescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
+
+
+
+	ID3D12Resource* depthStencilResouce = CreateDepthStencilTextureResource(device, kClientWidth, kClientHeight);
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; 
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D; 
+
+	device->CreateDepthStencilView(depthStencilResouce, &dsvDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	
+	D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+	
+	depthStencilDesc.DepthEnable = true;
+
+	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	
+	depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
 
 	ID3D12Resource* swapChainResources[2] = { nullptr };
@@ -967,6 +990,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 	hr = swapChain->GetBuffer(1, IID_PPV_ARGS(&swapChainResources[1]));
 	assert(SUCCEEDED(hr));
+
 
 
 
@@ -1033,7 +1057,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	ModelData modelData = LoadObjFile("resource", "axis.obj");
-	//DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
+	DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
 	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * modelData.vertices.size());
 	
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
@@ -1150,13 +1174,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(pixelShaderBlob != nullptr);
 
 
-	D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
 
-	depthStencilDesc.DepthEnable = true;
-
-	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-
-	depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
 
 
@@ -1190,6 +1208,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = device->CreateGraphicsPipelineState(&graphicsPilelineStateDesc,
 		IID_PPV_ARGS(&graphicsPipelinestate));
 	assert(SUCCEEDED(hr));
+
+	
+
+
 
 	/*ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * 6);
 
@@ -1252,10 +1274,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		UploadTextureDate(textureResource, mipImages, device, commandList);
 
 
-	DirectX::ScratchImage mipImages2 = LoadTexture("resource/monsterBall.png");
+	//DirectX::ScratchImage mipImages2 = LoadTexture("resource/monsterBall.png");
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	ID3D12Resource* textureResource2 = CreateTextureResource(device, metadata2);
-	ID3D12Resource* intermeditateResource2 =
+    ID3D12Resource* intermeditateResource2 =
 		UploadTextureDate(textureResource2, mipImages2, device, commandList);
 
 
@@ -1267,12 +1289,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12Resource* depthStencilResource = CreateDepthStencilTextureResource(device, kClientWidth, kClientHeight);
 	ID3D12DescriptorHeap* dsvdescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 
-	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-
-	device->CreateDepthStencilView(depthStencilResource, &dsvDesc, dsvdescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
+	
 
 	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexDate) * 6);
 
@@ -1653,7 +1670,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootSignature(rootSignature);
 			commandList->SetPipelineState(graphicsPipelinestate);
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
 
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -1661,7 +1678,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
 
-			commandList->SetGraphicsRootConstantBufferView(0, vertexResource->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 
 			
 
@@ -1676,7 +1693,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
 
-
+			
 			//sprite
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
@@ -1684,7 +1701,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 
-			commandList->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
+			//commandList->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
 
 			//commandList->DrawInstanced(6, 1, 0, 0);
 
