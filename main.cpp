@@ -201,25 +201,25 @@ Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Ve
 
 
 
-Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip) {
+Matrix4x4 MakePerspectiveFovMatrix(float y, float a, float n, float f) {
 	Matrix4x4 ans;
 
-	float cot = 1 / std::tan(fovY / 2);
-	ans.m[0][0] = (1 / aspectRatio) * cot;
+	
+	ans.m[0][0] = 1 / a * 1 / (tanf(y / 2));
 	ans.m[0][1] = 0;
 	ans.m[0][2] = 0;
 	ans.m[0][3] = 0;
 	ans.m[1][0] = 0;
-	ans.m[1][1] = cot;
+	ans.m[1][1] = 1 / tanf(y / 2);
 	ans.m[1][2] = 0;
 	ans.m[1][3] = 0;
 	ans.m[2][0] = 0;
 	ans.m[2][1] = 0;
-	ans.m[2][2] = nearClip - farClip / nearClip;
+	ans.m[2][2] = f / (f - n);
 	ans.m[2][3] = 1;
 	ans.m[3][0] = 0;
 	ans.m[3][1] = 0;
-	ans.m[3][2] = (nearClip - farClip) / -farClip * nearClip;
+	ans.m[3][2] = -n * f / (f - n);
 	ans.m[3][3] = 0;
 
 	return ans;
@@ -484,6 +484,9 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 	return modelData;
 }
 
+
+
+
 const int32_t kClientWidth = 1280;
 const int32_t kClientHeight = 720;
 
@@ -495,13 +498,9 @@ Transform transformSprite{ {1.0f,1.0f,1.0f,},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} }
 
 
 Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
-
 Matrix4x4 cameraMatrix = MakeAffineMatrix(cameratransform.scale, cameratransform.rotate, cameratransform.translate);
-
 Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-
 Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-
 Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
 
@@ -510,9 +509,6 @@ Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
 Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidth), 0.0f, float(kClientHeight), 0.0f, 100.0f);
 Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
-bool DepthFunc(float currZ, float prevZ) {
-	return currZ <= prevZ;;
-};
 
 
 
@@ -1287,9 +1283,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	ID3D12Resource* depthStencilResource = CreateDepthStencilTextureResource(device, kClientWidth, kClientHeight);
-	ID3D12DescriptorHeap* dsvdescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 
-	
 
 	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexDate) * 6);
 
@@ -1608,16 +1602,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//transform.rotate.y += 0.03f;
 
-			worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
-
-			worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+			
 
 
-
-			wvpDate->WVP = worldViewProjectionMatrix;
-			wvpDate->World = worldMatrix;
+			
 
 
+			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+			Matrix4x4 cameraMatrix = MakeAffineMatrix(cameratransform.scale, cameratransform.rotate, cameratransform.translate);
+			Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+			Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
 
 
@@ -1625,6 +1620,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
 			Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidth), 0.0f, float(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+
+			wvpDate->WVP = worldViewProjectionMatrix;
+			wvpDate->World = worldMatrix;
+
+			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+			windowDateSprite->uvTransform = uvTransformMatrix;
+
 
 			transformationMatrixDateSprite->WVP = worldViewProjectionMatrixSprate;
 			transformationMatrixDateSprite->World = worldMatrixSprite;
@@ -1640,17 +1644,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->ResourceBarrier(1, &barrier);
 
 
-			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvdescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 			commandList->OMSetRenderTargets(1, &rtvHandle[backBufferIndex], false, &dsvHandle);
 
 
 
-			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
-			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
-			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
-			windowDateSprite->uvTransform = uvTransformMatrix;
+		
 
-
+			
 
 
 			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f, };
@@ -1783,10 +1784,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
 
+	depthStencilResouce->Release();
 	textureResource->Release();
 	textureResource2->Release();
 	depthStencilResource->Release();
-	dsvdescriptorHeap->Release();
+	dsvDescriptorHeap->Release();
 
 
 	indexResourceSprite->Release();
