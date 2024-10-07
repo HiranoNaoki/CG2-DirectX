@@ -461,7 +461,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 				Vector2 texcoord = texcoords[elementIndices[1] - 1];
 				Vector3 normal = normals[elementIndices[2] - 1];
 			
-				position.x *= -1.0f;
+				position.x *= 1.0f;
 				texcoord.y = 1.0f - texcoord.y;
 				normal.x *= -1.0f;
 
@@ -1052,7 +1052,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 
-	ModelData modelData = LoadObjFile("resource", "axis.obj");
+	ModelData modelData = LoadObjFile("resource", "plane.obj");
 	DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
 	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexDate) * modelData.vertices.size());
 	
@@ -1153,8 +1153,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	D3D12_BLEND_DESC blendDesc{};
 
-	blendDesc.RenderTarget[0].RenderTargetWriteMask =
-		D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDesc.RenderTarget[0].RenderTargetWriteMask =D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDesc.RenderTarget[0].BlendEnable = TRUE;
+	blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
+	blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
+	blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+	blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+
 
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
@@ -1583,6 +1590,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
 			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
 
+			ImGui::ColorEdit4("Material", &materialDate->x, ImGuiColorEditFlags_AlphaPreview);
 			ImGui::DragFloat4("Light color", &directionalLightDate->color.x, 0.01f);
 			ImGui::DragFloat3("Light Direction", &directionalLightDate->direction.x, 0.01f);
 			ImGui::DragFloat("Light Intensity", &directionalLightDate->intensity, 0.01f);
@@ -1654,7 +1662,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			
 
 
-			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f, };
+			float clearColor[] = { 1.0f,1.0f,1.0f,1.0f, };
 			commandList->ClearRenderTargetView(rtvHandle[backBufferIndex], clearColor, 0, nullptr);
 
 			commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
