@@ -21,6 +21,7 @@
 #include <corecrt_math_defines.h>
 #include <dinput.h>
 #include <wrl.h>
+#include"Input.h"
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -796,7 +797,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	RegisterClass(&wc);
 
 
-
+	
 
 	RECT wrc = { 0,0,kClientWidth,kClientHeight };
 
@@ -814,6 +815,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		nullptr,
 		wc.hInstance,
 		nullptr);
+
+	Input* input = nullptr;
+	input = new Input();
+	input->Initialize(wc.hInstance, hwnd);
+
 
 	ShowWindow(hwnd, SW_SHOW);
 
@@ -1310,22 +1316,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		UploadTextureDate(textureResource2, mipImages2, device, commandList);
 
 
-	Microsoft::WRL::ComPtr<IDirectInput8> directInput = nullptr;
-	hr = DirectInput8Create(wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
-		(void**)&directInput, nullptr);
-	assert(SUCCEEDED(hr));
-
-
-
-	Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard = nullptr;
-	hr = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
-	assert(SUCCEEDED(result));
-
-	hr = keyboard->SetDataFormat(&c_dfDIKeyboard);
-	assert(SUCCEEDED(hr));
-
-	hr = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
-	assert(SUCCEEDED(hr));
+	
 
 
 
@@ -1816,10 +1807,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	
 
 
-
+	
 
 
 	CloseWindow(hwnd);
+
+	delete input;
 
 
 	Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
