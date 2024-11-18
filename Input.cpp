@@ -1,13 +1,12 @@
 #include "Input.h"
 #include <cassert>
-#include <wrl.h>
-#define DIRECTINPUT_VERSION  0x0800
-#include <dinput.h>
+
+
 
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
 
-using namespace Microsoft::WRL;
+//using namespace Microsoft::WRL;
 
 void Input::Initialize(HINSTANCE hInstance, HWND hwnd)
 {
@@ -20,7 +19,7 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd)
 
 
 
-	Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard = nullptr;
+
 	hr = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
 	assert(SUCCEEDED(hr));
 
@@ -33,5 +32,8 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd)
 
 void Input::Update()
 {
+	keyboard->Acquire();
+			BYTE key[256] = {};
+			keyboard->GetDeviceState(sizeof(key), key);
 
-}
+			

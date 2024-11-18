@@ -1642,13 +1642,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//transform.rotate.y += 0.03f;
 
-			keyboard->Acquire();
-			BYTE key[256] = {};
-			keyboard->GetDeviceState(sizeof(key), key);
-
-			if (key[DIK_0]) {
+			input->Update();
+			/*if (key[DIK_0]) {
 				OutputDebugStringA("Hit 0\n");
-			}
+			}*/
+}
+			
 			
 
 
