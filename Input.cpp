@@ -12,7 +12,7 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd)
 {
 	HRESULT hr;
 
-	Microsoft::WRL::ComPtr<IDirectInput8> directInput = nullptr;
+	
 	hr = DirectInput8Create(hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
 		(void**)&directInput, nullptr);
 	assert(SUCCEEDED(hr));
@@ -33,7 +33,39 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd)
 void Input::Update()
 {
 	keyboard->Acquire();
-			BYTE key[256] = {};
-			keyboard->GetDeviceState(sizeof(key), key);
+	
+	/*if (input->Pushkey(DIK_0)) {
+				OutputDebugStringA("Hit 0\n");
+	}*/
 
-			
+
+	keyboard->GetDeviceState(sizeof(key), key);
+
+	memcpy(keyPre, key, sizeof(key));
+
+}
+
+bool Input::PushKey(BYTE KeyNUmber) {
+	if (key[KeyNUmber])
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+	
+	
+}
+
+bool Input::TriggerKey(BYTE keyNumber) {
+	if (key[keyNumber] && !keyPre[keyNumber])
+	{
+		return true;
+
+	}
+	else {
+			return false;
+	}
+
+}
