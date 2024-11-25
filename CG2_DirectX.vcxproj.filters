@@ -45,6 +45,9 @@
     <ClCompile Include="Input.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="WinApp.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h">
@@ -70,6 +73,9 @@
     </ClInclude>
     <ClInclude Include="externals\imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="WinApp.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Input.h">
       <Filter>ヘッダー ファイル</Filter>

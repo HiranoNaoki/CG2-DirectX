@@ -1,6 +1,6 @@
 #define DIRECTINPUT_VERSION 0x0800
-#include <Windows.h>
-#include<cstdint>
+
+
 #include<string>
 #include<format>
 #include<d3d12.h>
@@ -14,7 +14,7 @@
 #include<fstream>
 #include<sstream>
 #include"externals/DirectXTex/DirectXTex.h"
-#include"externals/imgui/imgui.h"
+
 #include"externals/imgui/imgui_impl_dx12.h"
 #include"externals/imgui/imgui_impl_win32.h"
 #include"externals//DirectXTex//d3dx12.h"
@@ -22,9 +22,8 @@
 #include <dinput.h>
 #include <wrl.h>
 #include"Input.h"
+#include "WinApp.h"
 
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
 
@@ -39,19 +38,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
-		return true;
-	}
-	switch (msg)
-	{
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-	}
-	return DefWindowProc(hwnd, msg, wparam, lparam);
 
-}
 
 struct  Vector2 final
 {
@@ -496,8 +483,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 
 
 
-const int32_t kClientWidth = 1280;
-const int32_t kClientHeight = 720;
+
 
 Transform transform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f } };
 
@@ -529,7 +515,10 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(
 	descriptorHeapDesc.Type = heapType;
 	descriptorHeapDesc.NumDescriptors = numDescriptors;
 	descriptorHeapDesc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	
 	HRESULT hr = device->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&descriptorHeap));
+
+
 
 	assert(SUCCEEDED(hr));
 	return descriptorHeap;
@@ -782,46 +771,33 @@ bool useMonsterBall = true;
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
-	CoInitializeEx(0, COINIT_MULTITHREADED);
+	
 
 
 
 #pragma region window
-	WNDCLASS wc{};
-	wc.lpfnWndProc = WindowProc;
-	wc.lpszClassName = L"CG2WindowDlass";
-	wc.hInstance = GetModuleHandle(nullptr);
-	wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-
-
-	RegisterClass(&wc);
+	
 
 
 	
 
-	RECT wrc = { 0,0,kClientWidth,kClientHeight };
 
-	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
+	
 
-	HWND hwnd = CreateWindow(
-		wc.lpszClassName,
-		L"CG2",
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT,
-		CW_USEDEFAULT,
-		wrc.right - wrc.left,
-		wrc.bottom - wrc.top,
-		nullptr,
-		nullptr,
-		wc.hInstance,
-		nullptr);
-
+	
+	
+	
+	WinApp* winApp = nullptr;
 	Input* input = nullptr;
+
+	winApp = new WinApp();
+	winApp->Initialize();
+
 	input = new Input();
 	input->Initialize(wc.hInstance, hwnd);
 
 
-	ShowWindow(hwnd, SW_SHOW);
+	
 
 #pragma endregion 
 
@@ -1809,6 +1785,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	CloseWindow(hwnd);
 
+	delete winApp;
 	delete input;
 
 
