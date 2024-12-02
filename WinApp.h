@@ -23,9 +23,15 @@ public:
 	HWND GetHwnd() const { return hwnd; }
 
 	HINSTANCE GetHInstance() const { return wc.hInstance; }
+
+	bool ProcessMessage();
+
+
 private:
 	HWND hwnd = nullptr;
 
 	WNDCLASS wc{};
 };
+
+
 
