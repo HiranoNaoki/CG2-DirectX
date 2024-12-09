@@ -39,6 +39,9 @@ public:
 
 	void ImGUI();
 
+	void PreDraw();
+	void PostDraw();
+
 private:
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
 
@@ -54,4 +57,8 @@ private:
 	static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(const Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> swapChainResources;
+
+	UINT64 fenceValue = 0;
+
+
 };
