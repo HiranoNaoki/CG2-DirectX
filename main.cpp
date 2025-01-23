@@ -248,7 +248,7 @@ std::string ConvertString(const std::wstring& str) {
 
 
 
-Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
+/*Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
 	const std::wstring& filePath,
 	const wchar_t* profile,
 	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils,
@@ -308,9 +308,9 @@ Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
 
 	return shaderBlob;
 
-}
+}*/
 
-Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(Microsoft::WRL::ComPtr<ID3D12Device> device, size_t sizeInBytes) {
+/*Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(Microsoft::WRL::ComPtr<ID3D12Device> device, size_t sizeInBytes) {
 
 
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
@@ -334,9 +334,9 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(Microsoft::WRL::ComP
 		IID_PPV_ARGS(&resource));
 	assert(SUCCEEDED(hr));
 	return resource;
-}
+}*/
 
-DirectX::ScratchImage LoadTexture(const std::string& filePath) {
+/*DirectX::ScratchImage LoadTexture(const std::string& filePath) {
 	DirectX::ScratchImage image{};
 	std::wstring filePathw = ConvertString(filePath);
 	HRESULT hr = DirectX::LoadFromWICFile(filePathw.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
@@ -348,7 +348,7 @@ DirectX::ScratchImage LoadTexture(const std::string& filePath) {
 
 	return mipImges;
 
-}
+}*/
 Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(Microsoft::WRL::ComPtr<ID3D12Device> device, const DirectX::TexMetadata& metabete)
 {
 	D3D12_RESOURCE_DESC resourceDesc{};
@@ -590,7 +590,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptorRange[0].NumDescriptors = 1;
 	descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
+	
 
 	D3D12_ROOT_PARAMETER rootParameters[4] = {};
 	//material
