@@ -331,6 +331,7 @@ struct Material
 {
 	Vector4  color;
 	int32_t enableLighting;
+	float shininess;
 };
 
 struct TransformatioMatrix
@@ -375,8 +376,17 @@ Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(kClientWidt
 Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 
+float Dot(const Vector3& v1, const Vector3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
 
+float Length(const Vector3 v){ return std::sqrt(Dot(v,v)); }
 
+Vector3 Normalize(const Vector3& v) {
+	float length = Length(v);
+	if (length == 0.0f) {
+		return v;
+	}
+	return { v.x / length,v.y / length,v.z / length };
+}
 
 ID3D12DescriptorHeap* CreateDescriptorHeap(
 	ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible)
@@ -631,6 +641,10 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 	return handleGPU;
 }
 
+struct CameraForGpu
+{
+	Vector3 worldPosition;
+};
 
 bool useMonsterBall = true;
 
@@ -907,7 +921,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 
-	D3D12_ROOT_PARAMETER rootParameters[4] = {};
+	D3D12_ROOT_PARAMETER rootParameters[5] = {};
 	//material
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
@@ -925,6 +939,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParameters[3].Descriptor.ShaderRegister = 1;
+	//camera
+	rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParameters[4].Descriptor.ShaderRegister = 2;
+
 
 	descriptionRootSignature.pParameters = rootParameters;
 	descriptionRootSignature.NumParameters = _countof(rootParameters);
@@ -1339,6 +1358,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDateSprite));
 	materialDateSprite->color = { 1.0f,1.0f,1.0f,1.0f };
 	materialDateSprite->enableLighting = true;
+	materialDateSprite->shininess = 70;
 
 	ID3D12Resource* windowResourceSprite = CreateBufferResource(device, sizeof(Material));
 
@@ -1360,10 +1380,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	DirectionaLight* directionalLightDate = nullptr;
 	directionalLightResource->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDate));
 	directionalLightDate->color = { 1.0f,1.0f,1.0f,1.0f };
-	directionalLightDate->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightDate->direction = Normalize(directionalLightDate->direction);
 	directionalLightDate->intensity = 1.0f;
 
-	
+	ID3D12Resource* cameraResource = CreateBufferResource(device, sizeof(CameraForGpu));
+
+	CameraForGpu* cameraDate = nullptr;
+	cameraResource->Map(0, nullptr, reinterpret_cast<void**>(&cameraDate));
+	cameraDate->worldPosition = { 0.0f,0.0f,-10.0f };
 
 	//ImGUI
 	IMGUI_CHECKVERSION();
@@ -1399,10 +1423,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			
 			ImGui::DragFloat4("Light color", &directionalLightDate->color.x, 0.01f);
 			ImGui::DragFloat3("Light Direction", &directionalLightDate->direction.x, 0.01f);
+			directionalLightDate->direction = Normalize(directionalLightDate->direction);
 			ImGui::DragFloat("Light Intensity", &directionalLightDate->intensity, 0.01f);
 
 			ImGui::End();
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
+
 
 
 			
@@ -1478,6 +1504,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
 
+			commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
 			
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
@@ -1560,6 +1587,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	useAdapter->Release();
 	dxgifactory->Release();
 
+	cameraResource->Release();
 	vertexResourceSphere->Release();
 	vertexResourceSprite->Release();
 	vertexResource->Release();
