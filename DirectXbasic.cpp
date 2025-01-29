@@ -14,6 +14,12 @@
 
 using namespace Microsoft::WRL;
 
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DirectXbasic::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible)
+{
+	return Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>();
+}
+
 void DirectXbasic::Intialize(WinApp* winApp)
 {
 	assert(winApp);
@@ -67,7 +73,47 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(Microso
 }
 //}
 
-Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
+Microsoft::WRL::ComPtr<ID3D12Resource> DirectXbasic::CreateBufferResource(size_t sizeInBytes)
+{
+	//頂点リソース用のヒープの設定
+	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
+	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;//UploadHeapを使う
+	//頂点リソースの設定
+	D3D12_RESOURCE_DESC vertexResourceDesc{};
+	//バッファリソース。テクスチャ
+	vertexResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	vertexResourceDesc.Width = sizeInBytes;
+	//バッファの場合はこれらは1にする決まり
+	vertexResourceDesc.Height = 1;
+	vertexResourceDesc.DepthOrArraySize = 1;
+	vertexResourceDesc.MipLevels = 1;
+	vertexResourceDesc.SampleDesc.Count = 1;
+	//バッファの場合はこれにする決まり
+	vertexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	//実際に頂点リソースを作る
+	Microsoft::WRL::ComPtr <ID3D12Resource> resource = nullptr;
+	HRESULT hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
+		&vertexResourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+		IID_PPV_ARGS(&resource));
+	assert(SUCCEEDED(hr));
+	return resource;
+}
+
+DirectX::ScratchImage DirectXbasic::LoadTexture(const std::string& filePath) {
+	DirectX::ScratchImage image{};
+	std::wstring filePathw = StringUtility:: ConvertString(filePath);
+	HRESULT hr = DirectX::LoadFromWICFile(filePathw.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+	assert(SUCCEEDED(hr));
+
+	DirectX::ScratchImage mipImges{};
+	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImges);
+	assert(SUCCEEDED(hr));
+
+	return mipImges;
+
+}
+
+Microsoft::WRL::ComPtr<IDxcBlob> DirectXbasic::CompileShader(
 	const std::wstring& filePath,
 	const wchar_t* profile)
 {
@@ -100,7 +146,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
 		&shaderSourceBuffer,
 		arguments,
 		_countof(arguments),
-		includeHandler.Get(),
+		includeHandler,
 		IID_PPV_ARGS(&shaderResult)
 	);
 
@@ -124,6 +170,36 @@ Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
 
 	return shaderBlob;
 
+}
+
+Microsoft::WRL::ComPtr<ID3D12Resource> DirectXbasic::CreateTextureResource(Microsoft::WRL::ComPtr<ID3D12Device> device, const DirectX::TexMetadata& metadata)
+{
+	//metadataを基にResourceの設定
+	D3D12_RESOURCE_DESC resourceDesc{};
+	resourceDesc.Width = UINT(metadata.width);          //Textureの幅
+	resourceDesc.Height = UINT(metadata.height);        //Textureの高さ
+	resourceDesc.MipLevels = UINT16(metadata.mipLevels);//mipmapの数
+	resourceDesc.DepthOrArraySize = UINT16(metadata.arraySize);//奥行 or 配列Textureの配列数
+	resourceDesc.Format = metadata.format;              //TextureのFormat
+	resourceDesc.SampleDesc.Count = 1;                  //サンプリングカウント。1固定
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);//Textureの次元数
+	//利用するHeapの設定。非常にに特殊な運用
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT; //細かい設定を行う
+	//heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK; //WriteBackポリシーでCPUアクセス可能
+	//heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0; //プロセッサの近くに配置
+	// 
+	//Resourceの生成
+	Microsoft::WRL::ComPtr <ID3D12Resource> resource = nullptr;
+	HRESULT hr = device->CreateCommittedResource(
+		&heapProperties, //Heapの設定
+		D3D12_HEAP_FLAG_NONE, //Heapの特殊な設定
+		&resourceDesc, //Resourceの設定
+		D3D12_RESOURCE_STATE_COPY_DEST, //データ転送される設定
+		nullptr, //Clear最適値
+		IID_PPV_ARGS(&resource)); //作成するResorceポインタへのポインタ
+	assert(SUCCEEDED(hr));
+	return resource;
 }
 
 void DirectXbasic::Device() {
@@ -268,7 +344,7 @@ void DirectXbasic::Swap() {
 	swapChainDesc.BufferCount = 2;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-	hr = dxgifactory->CreateSwapChainForHwnd(commandQueue.Get(), winApp->GetHwnd(), &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
+	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), winApp->GetHwnd(), &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
 	assert(SUCCEEDED(hr));
 #pragma endregion
 }
@@ -351,21 +427,25 @@ void DirectXbasic::ScissorRect() {
 }
 
 void DirectXbasic::DxccomPtr() {
-	Microsoft::WRL::ComPtr<IDxcUtils> dxcutils = nullptr;
+	//Microsoft::WRL::ComPtr<IDxcUtils> dxcutils = nullptr;
 	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler = nullptr;
-	hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcutils));
+	hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
 	assert(SUCCEEDED(hr));
 	hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
 	assert(SUCCEEDED(hr));
 
 	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler = nullptr;
-	hr = dxcutils->CreateDefaultIncludeHandler(&includeHandler);
+	hr = dxcUtils->CreateDefaultIncludeHandler(&includeHandler);
 	assert(SUCCEEDED(hr));
 
 }
 
 void DirectXbasic::ImGUI() {
 	//ImGUI
+
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
@@ -441,44 +521,8 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXbasic::CompileShader(const std::wstring&
 	return Microsoft::WRL::ComPtr<IDxcBlob>();
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes) {
 
 
-	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
-	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-	D3D12_RESOURCE_DESC vertexResoureDesc{};
-
-	vertexResoureDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	vertexResoureDesc.Width = sizeInBytes;
-
-	vertexResoureDesc.Height = 1;
-	vertexResoureDesc.DepthOrArraySize = 1;
-	vertexResoureDesc.MipLevels = 1;
-	vertexResoureDesc.SampleDesc.Count = 1;
-
-	vertexResoureDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
-	HRESULT hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
-		&vertexResoureDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&resource));
-	assert(SUCCEEDED(hr));
-	return resource;
-
-}
-
-DirectX::ScratchImage LoadTexture(const std::string& filePath) {
-	DirectX::ScratchImage image{};
-	std::wstring filePathw = ConvertString(filePath);
-	HRESULT hr = DirectX::LoadFromWICFile(filePathw.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
-	assert(SUCCEEDED(hr));
-
-	DirectX::ScratchImage mipImges{};
-	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImges);
-	assert(SUCCEEDED(hr));
-
-	return mipImges;
-}
 
 
