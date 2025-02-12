@@ -402,7 +402,14 @@ ID3D12DescriptorHeap* CreateDescriptorHeap(
 	return descriptorHeap;
 }
 
+typedef void (*Callback)(int result);
 
+void judge_result(int result) {
+
+	transform.rotate.y += 0.01f;
+
+  
+}
 
 
 std::wstring ConvertString(const std::string& str) {
@@ -1389,6 +1396,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	cameraResource->Map(0, nullptr, reinterpret_cast<void**>(&cameraDate));
 	cameraDate->worldPosition = { 0.0f,0.0f,-10.0f };
 
+
+
+
+
+
+
 	//ImGUI
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -1446,6 +1459,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			wvpDate->World = worldMatrix;
 
 
+			 Callback callback = judge_result;
+
+             callback(0);
 
 
 
