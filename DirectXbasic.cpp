@@ -8,6 +8,7 @@
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/imgui/imgui_impl_dx12.h"
 #include <barrier>
+#include "externals/DirectXTex/d3dx12.h"
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
@@ -41,7 +42,7 @@ void DirectXbasic::Intialize(WinApp* winApp)
 }
 
 //void DirectXbasic::DepthBuffer() {
-Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(Microsoft::WRL::ComPtr <ID3D12Device> device, int32_t width, int32_t height) {
+ID3D12Resource* DirectXbasic::CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height) {
 	D3D12_RESOURCE_DESC resourceDesc{};
 	resourceDesc.Width = width;
 	resourceDesc.Height = height;
@@ -60,7 +61,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(Microso
 	depthClearValue.DepthStencil.Depth = 1.0f;
 	depthClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
+	ID3D12Resource* resource = nullptr;
 	HRESULT hr = device->CreateCommittedResource(
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
@@ -73,30 +74,56 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(Microso
 }
 //}
 
+
+
+
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXbasic::CreateBufferResource(size_t sizeInBytes)
 {
-	//頂点リソース用のヒープの設定
+	
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
-	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;//UploadHeapを使う
-	//頂点リソースの設定
+	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	
 	D3D12_RESOURCE_DESC vertexResourceDesc{};
-	//バッファリソース。テクスチャ
+	
 	vertexResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	vertexResourceDesc.Width = sizeInBytes;
-	//バッファの場合はこれらは1にする決まり
+	
 	vertexResourceDesc.Height = 1;
 	vertexResourceDesc.DepthOrArraySize = 1;
 	vertexResourceDesc.MipLevels = 1;
 	vertexResourceDesc.SampleDesc.Count = 1;
-	//バッファの場合はこれにする決まり
+	
 	vertexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	//実際に頂点リソースを作る
+
 	Microsoft::WRL::ComPtr <ID3D12Resource> resource = nullptr;
 	HRESULT hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
 		&vertexResourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
 		IID_PPV_ARGS(&resource));
 	assert(SUCCEEDED(hr));
 	return resource;
+}
+
+Microsoft::WRL::ComPtr<ID3D12Resource> DirectXbasic:: UploadTextureDate(Microsoft::WRL::ComPtr<ID3D12Resource> texture, const DirectX::ScratchImage& mipImges /*Microsoft::WRL::ComPtr<ID3D12Device> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList*/)
+{
+	std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+	DirectX::PrepareUpload(device.Get(), mipImges.GetImages(), mipImges.GetImageCount(), mipImges.GetMetadata(), subresources);
+	uint64_t intermediateSize = GetRequiredIntermediateSize(texture.Get(), 0, UINT(subresources.size()));
+	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource = CreateBufferResource(intermediateSize);
+	UpdateSubresources(commandList.Get(), texture.Get(), intermediateResource.Get(), 0, 0, UINT(subresources.size()), subresources.data());
+	//
+	D3D12_RESOURCE_BARRIER barrier{};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = texture.Get();
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+	commandList->ResourceBarrier(1, &barrier);
+	return intermediateResource;
+
+
+
+
 }
 
 DirectX::ScratchImage DirectXbasic::LoadTexture(const std::string& filePath) {
@@ -174,30 +201,30 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXbasic::CompileShader(
 
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXbasic::CreateTextureResource(Microsoft::WRL::ComPtr<ID3D12Device> device, const DirectX::TexMetadata& metadata)
 {
-	//metadataを基にResourceの設定
+	
 	D3D12_RESOURCE_DESC resourceDesc{};
-	resourceDesc.Width = UINT(metadata.width);          //Textureの幅
-	resourceDesc.Height = UINT(metadata.height);        //Textureの高さ
-	resourceDesc.MipLevels = UINT16(metadata.mipLevels);//mipmapの数
-	resourceDesc.DepthOrArraySize = UINT16(metadata.arraySize);//奥行 or 配列Textureの配列数
-	resourceDesc.Format = metadata.format;              //TextureのFormat
-	resourceDesc.SampleDesc.Count = 1;                  //サンプリングカウント。1固定
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);//Textureの次元数
-	//利用するHeapの設定。非常にに特殊な運用
+	resourceDesc.Width = UINT(metadata.width);         
+	resourceDesc.Height = UINT(metadata.height);        
+	resourceDesc.MipLevels = UINT16(metadata.mipLevels);
+	resourceDesc.DepthOrArraySize = UINT16(metadata.arraySize);
+	resourceDesc.Format = metadata.format;              //TextureFormat
+	resourceDesc.SampleDesc.Count = 1;                  
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);//Texture
+	
 	D3D12_HEAP_PROPERTIES heapProperties{};
-	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT; //細かい設定を行う
-	//heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK; //WriteBackポリシーでCPUアクセス可能
-	//heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0; //プロセッサの近くに配置
+	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+	//heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK; //WriteBack
+	//heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0; 
 	// 
-	//Resourceの生成
+	//Resource
 	Microsoft::WRL::ComPtr <ID3D12Resource> resource = nullptr;
 	HRESULT hr = device->CreateCommittedResource(
-		&heapProperties, //Heapの設定
-		D3D12_HEAP_FLAG_NONE, //Heapの特殊な設定
-		&resourceDesc, //Resourceの設定
-		D3D12_RESOURCE_STATE_COPY_DEST, //データ転送される設定
-		nullptr, //Clear最適値
-		IID_PPV_ARGS(&resource)); //作成するResorceポインタへのポインタ
+		&heapProperties, //
+		D3D12_HEAP_FLAG_NONE, //
+		&resourceDesc, //Resource
+		D3D12_RESOURCE_STATE_COPY_DEST, 
+		nullptr, //Clear
+		IID_PPV_ARGS(&resource)); 
 	assert(SUCCEEDED(hr));
 	return resource;
 }
@@ -207,7 +234,7 @@ void DirectXbasic::Device() {
 	HRESULT hr;
 
 #ifdef _DEBUG
-	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController = nullptr;
+	//Microsoft::WRL::ComPtr<ID3D12Debug1> debugController = nullptr;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
 		debugController->EnableDebugLayer();
 		debugController->SetEnableGPUBasedValidation(TRUE);
@@ -219,9 +246,9 @@ void DirectXbasic::Device() {
 
 
 #pragma region factory
-	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgifactory = nullptr;
+	//Microsoft::WRL::ComPtr<IDXGIFactory7> dxgifactory = nullptr;
 
-	hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgifactory));
+	hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 
 	assert(SUCCEEDED(hr));
 
@@ -230,7 +257,7 @@ void DirectXbasic::Device() {
 #pragma region adapter
 	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter = nullptr;
 
-	for (UINT i = 0; dxgifactory->EnumAdapterByGpuPreference(i,
+	for (UINT i = 0; dxgiFactory->EnumAdapterByGpuPreference(i,
 		DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAdapter)) !=
 		DXGI_ERROR_NOT_FOUND; ++i) {
 
@@ -250,7 +277,7 @@ void DirectXbasic::Device() {
 
 #pragma region device
 
-	Microsoft::WRL::ComPtr<ID3D12Device> device = nullptr;
+	//Microsoft::WRL::ComPtr<ID3D12Device> device = nullptr;
 
 
 
@@ -303,27 +330,28 @@ void DirectXbasic::Device() {
 		infoQueue->PushStorageFilter(&filter);
 
 
-		infoQueue->Release();
+		//infoQueue->Release();
 	}
 #endif 
 }
 
 void DirectXbasic::Command() {
+	HRESULT hr;
 #pragma region CommndQueue
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
-	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
+	commandQueue = nullptr;
+	
 	hr = device->CreateCommandQueue(&commandQueueDesc,
 		IID_PPV_ARGS(&commandQueue));
 #pragma endregion
 
 #pragma region Allocator
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator = nullptr;
+	commandAllocator = nullptr;
 	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
 	assert(SUCCEEDED(hr));
 #pragma endregion 
 
 #pragma region List
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList = nullptr;
+	commandList = nullptr;
 	hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), nullptr,
 		IID_PPV_ARGS(&commandList));
 
@@ -333,9 +361,12 @@ void DirectXbasic::Command() {
 }
 
 void DirectXbasic::Swap() {
+
+	HRESULT hr;
+
 #pragma region Swapchain
-	Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain = nullptr;
-	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+	swapChain = nullptr;
+	
 	swapChainDesc.Width = WinApp::kClientWidth;
 	swapChainDesc.Height = WinApp::kClientHeight;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -344,11 +375,60 @@ void DirectXbasic::Swap() {
 	swapChainDesc.BufferCount = 2;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), winApp->GetHwnd(), &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
+	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), winApp->GetHwnd(), &swapChainDesc,
+		nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
 	assert(SUCCEEDED(hr));
 #pragma endregion
+
+
+
+
+	//::WRL::ComPtr<ID3D12Resource> 
+	//swapChainResources[2] = { nullptr };
+	hr = swapChain->GetBuffer(0, IID_PPV_ARGS(&swapChainResources[0]));
+	assert(SUCCEEDED(hr));
+	hr = swapChain->GetBuffer(1, IID_PPV_ARGS(&swapChainResources[1]));
+	assert(SUCCEEDED(hr));
+
 }
 
+void DirectXbasic::DepthBuffer()
+{
+		resourceDesc.Width = WinApp::kClientWidth;//Text
+		resourceDesc.Height = WinApp::kClientHeight;//Texture
+		resourceDesc.MipLevels = 1;//mipmap
+		resourceDesc.DepthOrArraySize = 1;//
+		resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;//DetpthStencil
+		resourceDesc.SampleDesc.Count = 1;//
+		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;//DepthSrencil
+
+		
+		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;//VRAM
+		
+	
+		depthClearValue.DepthStencil.Depth = 1.0f;
+		depthClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		
+	
+		resource = nullptr;
+		HRESULT hr = device->CreateCommittedResource(
+			&heapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&depthClearValue,
+			IID_PPV_ARGS(&depthStencilResource));
+		assert(SUCCEEDED(hr));
+
+		
+		depthStencilDesc.DepthEnable = true;
+		
+		depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		
+		depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+}
 
 
 void DirectXbasic::DescriptorHeap() {
@@ -358,11 +438,11 @@ void DirectXbasic::DescriptorHeap() {
 
 
 #pragma region DescriptorHeap
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
+	 rtvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
 
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
+	 srvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
 
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
+	 dsvDescriptorHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 
 #pragma endregion
 
@@ -389,14 +469,19 @@ D3D12_CPU_DESCRIPTOR_HANDLE DirectXbasic::GetSRVCPUDescriptorHandle(uint32_t ind
 	return GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, index);
 }
 
+D3D12_GPU_DESCRIPTOR_HANDLE DirectXbasic::GetSRVGPUDescriptorHandle(uint32_t index)
+{
+	return GetGPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, index);
+}
+
 void DirectXbasic::DepthStencil() {
-	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResouce = CreateDepthStencilTextureResource(device, WinApp::kClientWidth, WinApp::kClientHeight);
+//	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResouce = CreateDepthStencilTextureResource(device, WinApp::kClientWidth, WinApp::kClientHeight);
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-	device->CreateDepthStencilView(depthStencilResouce.Get(), &dsvDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	device->CreateDepthStencilView(depthStencilResource.Get(), &dsvDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 }
 
@@ -476,7 +561,7 @@ void DirectXbasic::PreDraw()
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descrptorHeaps[] = { srvDescriptorHeap };
 	commandList->SetDescriptorHeaps(1, descrptorHeaps->GetAddressOf());
 
-
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 
 
 	commandList->RSSetViewports(1, &viewport);
@@ -516,10 +601,10 @@ void DirectXbasic::PostDraw()
 	hr = commandList->Reset(commandAllocator.Get(), nullptr);
 	assert(SUCCEEDED(hr));
 }
-Microsoft::WRL::ComPtr<IDxcBlob> DirectXbasic::CompileShader(const std::wstring& filePath, const wchar_t* profile)
+/*Microsoft::WRL::ComPtr<IDxcBlob> DirectXbasic::CompileShader(const std::wstring& filePath, const wchar_t* profile)
 {
 	return Microsoft::WRL::ComPtr<IDxcBlob>();
-}
+}*/
 
 
 
