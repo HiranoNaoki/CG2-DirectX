@@ -407,6 +407,8 @@ typedef void (*Callback)(int result);
 void judge_result(int result) {
 
 	transform.rotate.y += 0.01f;
+	transform.rotate.x -= 0.1f;
+	transform.rotate.z += 0.2f;
 
   
 }
