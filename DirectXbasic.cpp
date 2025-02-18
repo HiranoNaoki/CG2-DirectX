@@ -247,8 +247,8 @@ void DirectXbasic::InitializeFixFP5() {
 }
 
 void DirectXbasic::UpdateFixFP5() {
-	const std::chrono::microseconds kMinTime(uint64_t(100000.0f / 60.0f));
-	const std::chrono::microseconds kMinCheckTime(uint64_t(1000000.0f / 65.0f));
+	const std::chrono::microseconds kMinTime(uint64_t(1000000.0f / 10.0f));
+	const std::chrono::microseconds kMinCheckTime(uint64_t(1000000.0f / 10.0f));
 
 	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 	
