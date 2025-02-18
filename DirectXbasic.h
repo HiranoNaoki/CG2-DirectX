@@ -9,6 +9,7 @@
 #include "externals/DirectXTex/DirectXTex.h"
 #include"externals/imgui/imgui_impl_dx12.h"
 #include"externals/imgui/imgui_impl_win32.h"
+#include<chrono>
 
 #pragma comment(lib,"dxguid.lib")
 #pragma comment(lib,"dxcompiler.lib")
@@ -113,6 +114,8 @@ public:
 
 private:
 
+	
+
 	uint32_t descriptorSizeSRV = 0;
 	uint32_t descriptorSizeRTV = 0;
 	uint32_t descriptorSizeDSV = 0;
@@ -206,4 +209,10 @@ private:
 
 		WinApp* winApp = nullptr;
 
+
+		void InitializeFixFP5();
+
+	void UpdateFixFP5();
+
+	std::chrono::steady_clock::time_point reference_;
 };
