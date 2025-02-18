@@ -240,7 +240,12 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXbasic::CreateTextureResource(Micro
 	return resource;
 }
 
-
+void DirectXbasic::Finalize() {
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+	CloseHandle(fenceEvent);
+}
 
 void DirectXbasic::InitializeFixFP5() {
 	reference_ = std::chrono::steady_clock::now();

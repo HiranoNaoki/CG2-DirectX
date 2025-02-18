@@ -1094,13 +1094,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		dxbasic->PostDraw();
 	}
 
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
+	
 
 	OutputDebugStringA("Hello,DiretX!\n");
 
-	//CloseHandle(fenceEvent);
+	dxbasic->Finalize();
+	
 
 	delete input;
 	winApp->Finalize();
