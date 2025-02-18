@@ -15,8 +15,6 @@
 #include<sstream>
 #include"externals/DirectXTex/DirectXTex.h"
 
-#include"externals/imgui/imgui_impl_dx12.h"
-#include"externals/imgui/imgui_impl_win32.h"
 #include"externals//DirectXTex//d3dx12.h"
 #include <corecrt_math_defines.h>
 #include <dinput.h>
@@ -26,17 +24,9 @@
 #include"Math.h"
 #include"DirectXbasic.h"
 #include "Logger.h"
+#include<wrl.h>
 
 
-
-#pragma comment(lib,"dxguid.lib")
-#pragma comment(lib,"dxcompiler.lib")
-
-#pragma comment(lib,"d3d12.lib")
-#pragma comment(lib,"dxgi.lib")
-
-#pragma comment(lib,"dinput8.lib")
-#pragma comment(lib,"dxguid.lib")
 
 
 struct VertexDate
@@ -60,27 +50,27 @@ struct ModelData
 
 
 MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
-	 
-	MaterialData materialData; 
-	std::string line; 
-	
-	std::ifstream file(directoryPath + "/" + filename); 
-	assert(file.is_open()); 
-	
+
+	MaterialData materialData;
+	std::string line;
+
+	std::ifstream file(directoryPath + "/" + filename);
+	assert(file.is_open());
+
 	while (std::getline(file, line)) {
 		std::string identifier;
 		std::istringstream s(line);
 		s >> identifier;
 
-		
+
 		if (identifier == "map_Kd") {
 			std::string textureFilename;
 			s >> textureFilename;
-			
+
 			materialData.textureFilePath = directoryPath + "/" + textureFilename;
 		}
 	}
-	
+
 	return materialData;
 }
 
@@ -88,24 +78,24 @@ MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const st
 
 
 ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename) {
-	
-	ModelData modelData; 
-	std::vector<Vector4> positions; 
-	std::vector<Vector3> normals; 
-	std::vector<Vector2> texcoords; 
-	std::string line; 
 
-	
-	std::ifstream file(directoryPath + "/" + filename); 
-	assert(file.is_open()); 
-	
+	ModelData modelData;
+	std::vector<Vector4> positions;
+	std::vector<Vector3> normals;
+	std::vector<Vector2> texcoords;
+	std::string line;
+
+
+	std::ifstream file(directoryPath + "/" + filename);
+	assert(file.is_open());
+
 	while (std::getline(file, line))
 	{
 		std::string identifier;
 		std::istringstream s(line);
-		s >> identifier; 
+		s >> identifier;
 
-		
+
 		if (identifier == "v") {
 			Vector4 position;
 			s >> position.x >> position.y >> position.z;
@@ -125,39 +115,39 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		else if (identifier == "f") {
 			VertexDate triangle[3];
 
-			
+
 			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex) {
 				std::string vertexDefinition;
 				s >> vertexDefinition;
-			
+
 				std::istringstream v(vertexDefinition);
 				uint32_t elementIndices[3];
 				for (int32_t element = 0; element < 3; ++element) {
 					std::string index;
-					std::getline(v, index, '/'); 
+					std::getline(v, index, '/');
 					elementIndices[element] = std::stoi(index);
 				}
-				
+
 				Vector4 position = positions[elementIndices[0] - 1];
 				Vector2 texcoord = texcoords[elementIndices[1] - 1];
 				Vector3 normal = normals[elementIndices[2] - 1];
-			
+
 				position.x *= -1.0f;
 				texcoord.y = 1.0f - texcoord.y;
 				normal.x *= -1.0f;
 
 				triangle[faceVertex] = { position, texcoord, normal };
 			}
-		
+
 			modelData.vertices.push_back(triangle[2]);
 			modelData.vertices.push_back(triangle[1]);
 			modelData.vertices.push_back(triangle[0]);
 		}
 		else if (identifier == "mtllib") {
-			
+
 			std::string materialFilename;
 			s >> materialFilename;
-			
+
 			modelData.material = LoadMaterialTemplateFile(directoryPath, materialFilename);
 		}
 	}
@@ -180,19 +170,19 @@ Transform transformSprite{ {1.0f,1.0f,1.0f,},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} }
 Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
 Matrix4x4 cameraMatrix = MakeAffineMatrix(cameratransform.scale, cameratransform.rotate, cameratransform.translate);
 Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(WinApp::kClientWidth) / float(WinApp::kClientHeight), 0.1f, 100.0f);
+Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f,(1280.0f/ 720.0f), 0.1f, 100.0f);
 Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
 
 Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
-Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(WinApp::kClientWidth), 0.0f, float(WinApp:: kClientHeight), 0.0f, 100.0f);
+Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(WinApp::kClientWidth), 0.0f, float(WinApp::kClientHeight), 0.0f, 100.0f);
 Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 
 
 
-/*Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(
 	Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible)
 {
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap = nullptr;
@@ -200,14 +190,14 @@ Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply
 	descriptorHeapDesc.Type = heapType;
 	descriptorHeapDesc.NumDescriptors = numDescriptors;
 	descriptorHeapDesc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	
+
 	HRESULT hr = device->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&descriptorHeap));
 
 
 
 	assert(SUCCEEDED(hr));
 	return descriptorHeap;
-}*/
+}
 
 
 
@@ -244,7 +234,7 @@ std::string ConvertString(const std::wstring& str) {
 
 //Logger.h
 //void Log(const std::string& message) {
-	
+
 //}
 
 
@@ -428,21 +418,32 @@ std::string ConvertString(const std::wstring& str) {
 
 bool useMonsterBall = true;
 
+struct D3DResourceLeakChecker
+{
+	~D3DResourceLeakChecker() {
+		Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
+		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
+			debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+			debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
+			debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
 
+		}
+	}
+};
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
-	
 
 
-	
-	
+	D3DResourceLeakChecker leakcheker;
+
+
 
 
 
 #pragma region 
-	
-	
-	
+
+
+
 	WinApp* winApp = nullptr;
 	Input* input = nullptr;
 	DirectXbasic* dxbasic = nullptr;
@@ -454,65 +455,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	input->Initialize(winApp);
 
 	dxbasic = new DirectXbasic();
-	dxbasic->Intialize(winApp);
+	dxbasic->Initialize(winApp);
 
 
-	
+
 
 #pragma endregion 
 
 
+	/*Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap = CreateDescriptorHeap(dxbasic->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
+
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap = CreateDescriptorHeap(dxbasic->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
+
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap = CreateDescriptorHeap(dxbasic->GetDevice(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
+
+
+*/
 
 
 
-
-	
-	
 	D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
-	
+
 	depthStencilDesc.DepthEnable = true;
 
 	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	
+
 	depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-
-
-	
-
-
-
-
-	
-
-
-
-
-	MSG msg{};
-
-	
-
-	HANDLE fenceEvent = CreateEvent(NULL, false, false, NULL);
-	assert(fenceEvent != nullptr);
-
-	
-
-
-
-	
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 	//Rootsignature
@@ -526,7 +494,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptorRange[0].NumDescriptors = 1;
 	descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-	
+
 
 	D3D12_ROOT_PARAMETER rootParameters[4] = {};
 	//material
@@ -607,17 +575,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
-	Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob = dxbasic->CompileShader(L"./resource/shaders/Object3d.VS.hlsl",
+	Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob = dxbasic->CompileShader(L"resource/shaders/Object3d.VS.hlsl",
 		L"vs_6_0");
 	assert(vertexShaderBlob != nullptr);
 
-	Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob = dxbasic->CompileShader(L"./resource/shaders/Object3d.PS.hlsl",
+	Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob = dxbasic->CompileShader(L"resource/shaders/Object3d.PS.hlsl",
 		L"ps_6_0");
 	assert(pixelShaderBlob != nullptr);
 
 
 
-
+	 Material* materialDate = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Resource> materialResource = dxbasic->CreateBufferResource(sizeof(Material));
+	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
+	materialDate->color = { Vector4(1.0f, 1.0f, 1.0f, 1.0f) };
+	materialDate->enableLighting = true;
+	materialDate->uvTransform = MakeIdentity4x4();
 
 
 
@@ -651,7 +624,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		IID_PPV_ARGS(&graphicsPipelinestate));
 	assert(SUCCEEDED(hr));
 
-	
+
 
 
 
@@ -719,27 +692,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	DirectX::ScratchImage mipImages2 = dxbasic->LoadTexture("resource/monsterBall.png");
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource2 = dxbasic->CreateTextureResource(dxbasic->GetDevice(), metadata2);
-    Microsoft::WRL::ComPtr<ID3D12Resource> intermeditateResource2 =
+	Microsoft::WRL::ComPtr<ID3D12Resource> intermeditateResource2 =
 		dxbasic->UploadTextureDate(textureResource2.Get(), mipImages2);
 
 
-	
+
 	ModelData modelData = LoadObjFile("resource", "axis.obj");
-	
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource = dxbasic->CreateBufferResource(sizeof(VertexDate) * modelData.vertices.size());
-	
+
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
-	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress(); 
-	
+	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
+
 	vertexBufferView.SizeInBytes = UINT(sizeof(VertexDate) * modelData.vertices.size());
-	
-	vertexBufferView.StrideInBytes = sizeof(VertexDate); 
-	
+
+	vertexBufferView.StrideInBytes = sizeof(VertexDate);
+
 	VertexDate* vertexData = nullptr;
 
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-	std::memcpy(vertexData, modelData.vertices.data(), sizeof(VertexDate)* modelData.vertices.size()); 
+	std::memcpy(vertexData, modelData.vertices.data(), sizeof(VertexDate) * modelData.vertices.size());
 
 
 
@@ -925,22 +898,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-
-
-
-	
-
-	
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResource = dxbasic->CreateBufferResource(sizeof(Vector4));
-
-	Vector4* materialDate = nullptr;
-	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
+	 
 
 
 
 
-	*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+
+
+	//Microsoft::WRL::ComPtr<ID3D12Resource> materialResource = dxbasic->CreateBufferResource(sizeof(Vector4));
+
+	//Vector4* materialDate = nullptr;
+	//materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialDate));
+
+
+
+
+	//*materialDate = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource = dxbasic->CreateBufferResource(sizeof(TransformatioMatrix));
 
@@ -1006,185 +979,133 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-	
 
-	while (msg.message != WM_QUIT) {
-		if (winApp->ProcessMessage())
-		{
-			break;
-		}
-		else {
-			ImGui_ImplDX12_NewFrame();
-			ImGui_ImplWin32_NewFrame();
-			ImGui::NewFrame();
 
-			//ImGui::ShowDemoWindow();
-			ImGui::Begin("anju");
+	while (!winApp->ProcessMessage()) {
 
+		ImGui_ImplDX12_NewFrame();
+		ImGui_ImplWin32_NewFrame();
+		ImGui::NewFrame();
 
-			ImGui::ColorEdit3("RGB", &materialDate->x);
-			ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f);
-			ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
-			ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
+		//ImGui::ShowDemoWindow();
+		ImGui::Begin("anju");
 
-			ImGui::DragFloat4("Light color", &directionalLightDate->color.x, 0.01f);
-			ImGui::DragFloat3("Light Direction", &directionalLightDate->direction.x, 0.01f);
-			ImGui::DragFloat("Light Intensity", &directionalLightDate->intensity, 0.01f);
 
-			ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-			ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+		ImGui::ColorEdit3("RGB", &materialDate->color.x);
+		ImGui::DragFloat3("Scale", &transform.scale.x, 0.01f);
+		ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.01f);
+		ImGui::DragFloat3("Translate", &transform.translate.x, 0.01f);
 
+		ImGui::DragFloat4("Light color", &directionalLightDate->color.x, 0.01f);
+		ImGui::DragFloat3("Light Direction", &directionalLightDate->direction.x, 0.01f);
+		ImGui::DragFloat("Light Intensity", &directionalLightDate->intensity, 0.01f);
 
+		ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+		ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+		ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
 
-			ImGui::End();
-			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 
+		ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 
+		ImGui::End();
 
 
 
-			//transform.rotate.y += 0.03f;
 
-			input->Update();
 
+		//transform.rotate.y += 0.03f;
 
+		input->Update();
 
 
 
 
-			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
-			Matrix4x4 cameraMatrix = MakeAffineMatrix(cameratransform.scale, cameratransform.rotate, cameratransform.translate);
-			Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-			Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(WinApp::kClientWidth) / float(WinApp::kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
 
+		 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+		 cameraMatrix = MakeAffineMatrix(cameratransform.scale, cameratransform.rotate, cameratransform.translate);
+		 viewMatrix = Inverse(cameraMatrix);
+		 projectionMatrix = MakePerspectiveFovMatrix(0.45f, (1280.0f / 720.0f), 0.1f, 100.0f);
+		 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 
-			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
-			Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
-			Matrix4x4 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(WinApp::kClientWidth), 0.0f, float(WinApp::kClientHeight), 0.0f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+		wvpDate->WVP = worldViewProjectionMatrix;
+		wvpDate->World = worldMatrix;
 
-			wvpDate->WVP = worldViewProjectionMatrix;
-			wvpDate->World = worldMatrix;
 
-			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
-			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
-			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
-			windowDateSprite->uvTransform = uvTransformMatrix;
+		 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
+		 viewMatrixSprite = MakeIdentity4x4();
+		 projectionMatrixSprite = MakeOrthograhicMatrix(0.0f, float(WinApp::kClientWidth), 0.0f, float(WinApp::kClientHeight), 0.0f, 100.0f);
+		 worldViewProjectionMatrixSprate = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 
-			transformationMatrixDateSprite->WVP = worldViewProjectionMatrixSprate;
-			transformationMatrixDateSprite->World = worldMatrixSprite;
 
+		Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+		uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
+		uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+		windowDateSprite->uvTransform = uvTransformMatrix;
 
 
-			dxbasic->PreDraw();
+		transformationMatrixDateSprite->WVP = worldViewProjectionMatrixSprate;
+		transformationMatrixDateSprite->World = worldMatrixSprite;
 
 
+		ImGui::Render();
 
+		dxbasic->PreDraw();
 
 
+		dxbasic->GetCommandList()->SetGraphicsRootSignature(rootSignature.Get());
+		dxbasic->GetCommandList()->SetPipelineState(graphicsPipelinestate.Get());
 
+		dxbasic->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 
 
+		dxbasic->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
+		dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
+		dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
 
 
-			dxbasic->GetCommandList()->SetGraphicsRootSignature(rootSignature.Get());
-			dxbasic->GetCommandList()->SetPipelineState(graphicsPipelinestate.Get());
-			dxbasic->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView);
+		dxbasic->GetCommandList()->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
-			dxbasic->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
 
+		dxbasic->GetCommandList()->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
 
-			dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
 
-			dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
+		//sprite
+		dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 
+		dxbasic->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
+		dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 
+		dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
+		dxbasic->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
-			dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
+		dxbasic->GetCommandList()->DrawInstanced(6, 1, 0, 0);
 
 
-			dxbasic->GetCommandList()->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+		dxbasic->GetCommandList()->IASetIndexBuffer(&indexBufferviewSprite);
 
-			dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+		dxbasic->GetCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
-
-			dxbasic->GetCommandList()->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
-
-
-			//sprite
-			dxbasic->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-
-			dxbasic->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-
-			dxbasic->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
-
-			//commandList->SetGraphicsRootConstantBufferView(0, windowResourceSprite->GetGPUVirtualAddress());
-
-			//commandList->DrawInstanced(6, 1, 0, 0);
-
-
-			dxbasic->GetCommandList()->IASetIndexBuffer(&indexBufferviewSprite);
-
-			//commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-
-
-
-
-
-
-			ImGui::Render();
-
-
-
-
-
-
-
-			dxbasic->PostDraw();
-
-
-		}
-
-		ImGui_ImplDX12_Shutdown();
-		ImGui_ImplWin32_Shutdown();
-		ImGui::DestroyContext();
-
-		OutputDebugStringA("Hello,DiretX!\n");
-
-		CloseHandle(fenceEvent);
-
-
-
-
-
-
-
-
-
-		delete input;
-		winApp->Finalize();
-		delete winApp;
-		delete dxbasic;
-
-		Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
-		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
-			debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
-			debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
-			debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
-			debug->Release();
-		}
-
-
-
+		dxbasic->PostDraw();
 	}
 
-		return 0;
-	
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+
+	OutputDebugStringA("Hello,DiretX!\n");
+
+	//CloseHandle(fenceEvent);
+
+	delete input;
+	winApp->Finalize();
+	delete winApp;
+	delete dxbasic;
+
+	return 0;
 }

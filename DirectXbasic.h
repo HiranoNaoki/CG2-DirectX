@@ -7,7 +7,14 @@
 #include <dxcapi.h>
 #include <string>
 #include "externals/DirectXTex/DirectXTex.h"
+#include"externals/imgui/imgui_impl_dx12.h"
+#include"externals/imgui/imgui_impl_win32.h"
 
+#pragma comment(lib,"dxguid.lib")
+#pragma comment(lib,"dxcompiler.lib")
+
+#pragma comment(lib,"d3d12.lib")
+#pragma comment(lib,"dxgi.lib")
 
 
 class DirectXbasic {
@@ -15,6 +22,11 @@ class DirectXbasic {
 
 
 public:
+
+	void Initialize(WinApp* winApp);
+
+	void Device();
+
 	void Command();
 
 	void Swap();
@@ -22,6 +34,10 @@ public:
 	void DepthBuffer();
 
 	void DescriptorHeap();
+
+
+	
+
 
 	void RenderTargetView();
 
@@ -34,25 +50,20 @@ public:
 
 	void ScissorRect();
 
-	void DxccomPtr();
+	void dxcCompilerGenerate();
 
 	void ImGUI();
 
 
-	D3D12_CPU_DESCRIPTOR_HANDLE GetSRVCPUDescriptorHandle(uint32_t index);
+	
 
-	D3D12_GPU_DESCRIPTOR_HANDLE GetSRVGPUDescriptorHandle(uint32_t index);
-
-
-	void Intialize(WinApp* winApp);
-
-	void Device();
+	
 
 
 	void PreDraw();
 	void PostDraw();
 
-	ID3D12Resource* CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height);
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(Microsoft::WRL::ComPtr<ID3D12Device> device, int32_t width, int32_t height);
 
 
 	
@@ -89,7 +100,14 @@ public:
 	return handleGPU;
 }
 
-	
+	D3D12_CPU_DESCRIPTOR_HANDLE GetSRVCPUDescriptorHandle(uint32_t index);
+	D3D12_GPU_DESCRIPTOR_HANDLE GetSRVGPUDescriptorHandle(uint32_t index);
+	// RTV
+	D3D12_CPU_DESCRIPTOR_HANDLE GetRTVCPUDescriptorHandle(uint32_t index);
+	D3D12_GPU_DESCRIPTOR_HANDLE GetRTVGPUDescriptorHandle(uint32_t index);
+	// DSV
+	D3D12_CPU_DESCRIPTOR_HANDLE GetDSVCPUDescriptorHandle(uint32_t index);
+	D3D12_GPU_DESCRIPTOR_HANDLE GetDSVGPUDescriptorHandle(uint32_t index);
 
 
 
@@ -104,11 +122,12 @@ private:
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 
 	
+	
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
 
 
 
-
-	HRESULT hr = CoInitializeEx(0, COINIT_MULTITHREADED);
+	HRESULT hr;// = CoInitializeEx(0, COINIT_MULTITHREADED);
 
 	
 
@@ -140,28 +159,35 @@ private:
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> swapChainResources;
 
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvStartHandle;
+
 	D3D12_CPU_DESCRIPTOR_HANDLE	rtvHandles[2];
 
 
-	Microsoft::WRL::ComPtr <ID3D12Fence> fence;
 
-	UINT64 fenceValue = 0;
+	
 
 
 	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController;
 
+	
+	Microsoft::WRL::ComPtr <ID3D12Fence> fence;
+
 	HANDLE fenceEvent;
+	UINT64 fenceValue = 0;
 
-	D3D12_VIEWPORT viewport{};
+	
 
-	D3D12_RECT scissorRect{};
+
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> resource;
 
+	D3D12_RECT scissorRect{};
+
+		D3D12_VIEWPORT viewport{};
 
 
-
-	IDxcIncludeHandler* includeHandler;
+	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler;
 
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource;
@@ -174,9 +200,9 @@ private:
 
 	D3D12_RESOURCE_DESC resourceDesc{};
 
-		IDxcUtils* dxcUtils;
+	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils;
 
-	IDxcCompiler3* dxcCompiler;
+	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler;
 
 		WinApp* winApp = nullptr;
 
